@@ -12,14 +12,14 @@ import (
 	"github.com/gliderlabs/logspout/router"
 )
 
-// KinesisPutRecordsLimit is the maximum number of records allowed for a PutRecords request.
-var KinesisPutRecordsLimit = 500
+// PutRecordsLimit is the maximum number of records allowed for a PutRecords request.
+var PutRecordsLimit = 500
 
-// KinesisRecordSizeLimit is the maxmimum allowed size per record.
-var KinesisRecordSizeLimit int = 1 * 1024 * 1024 // 1MB
+// RecordSizeLimit is the maximum allowed size per record.
+var RecordSizeLimit int = 1 * 1024 * 1024 // 1MB
 
-// KinesisPutRecordsSizeLimit is the maxmimum allowed size per PutRecords request.
-var KinesisPutRecordsSizeLimit int = 5 * 1024 * 1024 // 5MB
+// PutRecordsSizeLimit is the maximum allowed size per PutRecords request.
+var PutRecordsSizeLimit int = 5 * 1024 * 1024 // 5MB
 
 func init() {
 	router.AdapterFactories.Register(NewKinesisAdapter, "kinesis")
@@ -94,17 +94,17 @@ func (r *recordBuffer) Add(m *router.Message) (err error) {
 	dataLen := len(data)
 
 	// This record is too large, we can't submit it to kinesis.
-	if dataLen > KinesisRecordSizeLimit {
+	if dataLen > RecordSizeLimit {
 		return errors.New(fmt.Sprintf("recordBuffer.Add: log data byte size (%d) is over the limit.", dataLen))
 	}
 
 	// Adding this event would make our request have too many records. Flush first.
-	if r.count+1 > KinesisPutRecordsLimit {
+	if r.count+1 > PutRecordsLimit {
 		err = r.Flush()
 	}
 
 	// Adding this event would make our request too large. Flush first.
-	if r.byteSize+dataLen > KinesisPutRecordsSizeLimit {
+	if r.byteSize+dataLen > PutRecordsSizeLimit {
 		err = r.Flush()
 	}
 
