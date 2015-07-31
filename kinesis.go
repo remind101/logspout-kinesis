@@ -83,7 +83,7 @@ func newRecordBuffer(client *kinesis.Kinesis, streamName string) *recordBuffer {
 	}
 }
 
-func (r *recordBuffer) Add(m *router.Message) (err error) {
+func (r *recordBuffer) Add(m *router.Message) error {
 	data := m.Data
 	dataLen := len(data)
 
@@ -94,12 +94,18 @@ func (r *recordBuffer) Add(m *router.Message) (err error) {
 
 	// Adding this event would make our request have too many records. Flush first.
 	if r.count+1 > PutRecordsLimit {
-		err = r.Flush()
+		err := r.Flush()
+		if err != nil {
+			return err
+		}
 	}
 
 	// Adding this event would make our request too large. Flush first.
 	if r.byteSize+dataLen > PutRecordsSizeLimit {
-		err = r.Flush()
+		err := r.Flush()
+		if err != nil {
+			return err
+		}
 	}
 
 	// Partition key
@@ -120,7 +126,7 @@ func (r *recordBuffer) Add(m *router.Message) (err error) {
 		PartitionKey: aws.String(pKey),
 	})
 
-	return err
+	return nil
 }
 
 func (r *recordBuffer) Flush() error {
