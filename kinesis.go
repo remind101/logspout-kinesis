@@ -54,20 +54,14 @@ STREAM_LOOP:
 		select {
 		case l, open := <-logstream:
 			if !open {
-				if err := rb.Flush(); err != nil {
-					log.Println("kinesis: ", err.Error())
-				}
+				logErr(rb.Flush())
 				break STREAM_LOOP
 			}
 
-			if err := rb.Add(l); err != nil {
-				log.Println("kinesis: ", err.Error())
-			}
+			logErr(rb.Add(l))
 		case <-ticker.C:
 			// Flush buffer every second.
-			if err := rb.Flush(); err != nil {
-				log.Println("kinesis: ", err.Error())
-			}
+			logErr(rb.Flush())
 		}
 	}
 }
@@ -148,4 +142,10 @@ func (r *recordBuffer) reset() {
 	r.count = 0
 	r.byteSize = 0
 	r.input.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
+}
+
+func logErr(err error) {
+	if err != nil {
+		log.Println("kinesis: ", err.Error())
+	}
 }
