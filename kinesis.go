@@ -1,8 +1,10 @@
 package kinesis
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"html/template"
 	"log"
 	"os"
 	"time"
@@ -109,10 +111,10 @@ func (r *recordBuffer) Add(m *router.Message) error {
 	}
 
 	// Partition key
-	pKey := fmt.Sprintf("%s.%s.%s",
-		m.Container.Config.Labels["app"],
-		m.Container.Config.Labels["com.amazonaws.ecs.task-definition-version"],
-		m.Container.Config.Labels["com.amazonaws.ecs.container-name"])
+	pKey, err := pKey(m)
+	if err != nil {
+		return err
+	}
 
 	// Add to count
 	r.count += 1
@@ -154,4 +156,24 @@ func logErr(err error) {
 	if err != nil {
 		log.Println("kinesis: ", err.Error())
 	}
+}
+
+func pKey(m *router.Message) (string, error) {
+	pKeyTmplString := os.Getenv("KINESIS_PARTITION_KEY_TEMPLATE")
+	if pKeyTmplString == "" {
+		return "", errors.New("The partition key template is missing. Please set the KINESIS_PARTITION_KEY_TEMPLATE env variable")
+	}
+
+	pKeyTmpl, err := template.New("kinesis").Parse(pKeyTmplString)
+	if err != nil {
+		return "", err
+	}
+
+	var pKey bytes.Buffer
+	err = pKeyTmpl.Execute(&pKey, m)
+	if err != nil {
+		return "", err
+	}
+
+	return pKey.String(), nil
 }
