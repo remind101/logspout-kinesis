@@ -24,10 +24,7 @@ func newDrainer(client *kinesis.Kinesis, streamName string) (*Drainer, error) {
 }
 
 func (d *Drainer) Drain() {
-	ticker := time.NewTicker(time.Second * 1)
-
-	for {
+	for range time.Tick(time.Second * 1) {
 		logErr(d.Buffer.Flush())
-		<-ticker.C
 	}
 }
