@@ -37,6 +37,7 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 		d, err := a.findDrainer(m)
 		if err != nil {
 			logErr(err)
+			break
 		}
 
 		if !open {
