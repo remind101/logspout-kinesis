@@ -34,14 +34,15 @@ func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
 func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 	for {
 		m, open := <-logstream
-		d, err := a.findDrainer(m)
-		if err != nil {
-			logErr(err)
+		if !open {
+			log.Println("kinesis: Channel is closed, flushing all the buffers")
+			logErrs(a.FlushAll())
 			break
 		}
 
-		if !open {
-			logErr(d.Buffer.Flush())
+		d, err := a.findDrainer(m)
+		if err != nil {
+			logErr(err)
 			break
 		}
 
@@ -65,6 +66,16 @@ func (a *KinesisAdapter) findDrainer(m *router.Message) (*Drainer, error) {
 	}
 
 	return d, nil
+}
+
+func (a *KinesisAdapter) FlushAll() []error {
+	var err []error
+
+	for _, d := range a.Drainers {
+		err = append(err, d.Buffer.Flush())
+	}
+
+	return err
 }
 
 func streamName(m *router.Message) (string, error) {
@@ -91,5 +102,13 @@ func streamName(m *router.Message) (string, error) {
 func logErr(err error) {
 	if err != nil {
 		log.Println("kinesis: ", err.Error())
+	}
+}
+
+func logErrs(err []error) {
+	if err != nil {
+		for _, e := range err {
+			log.Println("kinesis: ", e.Error())
+		}
 	}
 }
