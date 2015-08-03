@@ -23,19 +23,42 @@ var PutRecordsSizeLimit int = 5 * 1024 * 1024 // 5MB
 
 type recordBuffer struct {
 	client   *kinesis.Kinesis
+	pKeyTmpl *template.Template
 	input    *kinesis.PutRecordsInput
 	count    int
 	byteSize int
 }
 
-func newRecordBuffer(client *kinesis.Kinesis, streamName string) *recordBuffer {
-	return &recordBuffer{
-		client: client,
-		input: &kinesis.PutRecordsInput{
-			StreamName: aws.String(streamName),
-			Records:    make([]*kinesis.PutRecordsRequestEntry, 0),
-		},
+func newRecordBuffer(client *kinesis.Kinesis, streamName string) (*recordBuffer, error) {
+	pKeyTmpl, err := pKeyTmpl()
+	if err != nil {
+		return nil, err
 	}
+
+	input := &kinesis.PutRecordsInput{
+		StreamName: aws.String(streamName),
+		Records:    make([]*kinesis.PutRecordsRequestEntry, 0),
+	}
+
+	return &recordBuffer{
+		client:   client,
+		pKeyTmpl: pKeyTmpl,
+		input:    input,
+	}, nil
+}
+
+func pKeyTmpl() (*template.Template, error) {
+	pKeyTmplString := os.Getenv("KINESIS_PARTITION_KEY_TEMPLATE")
+	if pKeyTmplString == "" {
+		return nil, errors.New("The partition key template is missing. Please set the KINESIS_PARTITION_KEY_TEMPLATE env variable")
+	}
+
+	pKeyTmpl, err := template.New("kinesisPartitionKey").Parse(pKeyTmplString)
+	if err != nil {
+		return nil, err
+	}
+
+	return pKeyTmpl, nil
 }
 
 func (r *recordBuffer) Add(m *router.Message) error {
@@ -64,7 +87,7 @@ func (r *recordBuffer) Add(m *router.Message) error {
 	}
 
 	// Partition key
-	pKey, err := pKey(m)
+	pKey, err := pKey(r.pKeyTmpl, m)
 	if err != nil {
 		return err
 	}
@@ -105,19 +128,9 @@ func (r *recordBuffer) reset() {
 	r.input.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
 }
 
-func pKey(m *router.Message) (string, error) {
-	pKeyTmplString := os.Getenv("KINESIS_PARTITION_KEY_TEMPLATE")
-	if pKeyTmplString == "" {
-		return "", errors.New("The partition key template is missing. Please set the KINESIS_PARTITION_KEY_TEMPLATE env variable")
-	}
-
-	pKeyTmpl, err := template.New("kinesisPartitionKey").Parse(pKeyTmplString)
-	if err != nil {
-		return "", err
-	}
-
+func pKey(tmpl *template.Template, m *router.Message) (string, error) {
 	var pKey bytes.Buffer
-	err = pKeyTmpl.Execute(&pKey, m)
+	err := tmpl.Execute(&pKey, m)
 	if err != nil {
 		return "", err
 	}

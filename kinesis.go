@@ -66,7 +66,10 @@ func (a *KinesisAdapter) findDrainer(m *router.Message) (*Drainer, error) {
 	}
 
 	if d, ok = a.Drainers[streamName]; !ok {
-		d = newDrainer(a.Client, streamName)
+		d, err = newDrainer(a.Client, streamName)
+		if err != nil {
+			return nil, err
+		}
 
 		a.Drainers[streamName] = d
 	}

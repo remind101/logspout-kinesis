@@ -10,13 +10,17 @@ type Drainer struct {
 	Buffer *recordBuffer
 }
 
-func newDrainer(client *kinesis.Kinesis, streamName string) *Drainer {
-	d := &Drainer{Buffer: newRecordBuffer(client, streamName)}
+func newDrainer(client *kinesis.Kinesis, streamName string) (*Drainer, error) {
+	buffer, err := newRecordBuffer(client, streamName)
+	if err != nil {
+		return nil, err
+	}
 
+	d := &Drainer{Buffer: buffer}
 	// Every second, we flush the buffer
 	go d.Drain()
 
-	return d
+	return d, nil
 }
 
 func (d *Drainer) Drain() {
