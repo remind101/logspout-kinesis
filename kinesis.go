@@ -3,177 +3,92 @@ package kinesis
 import (
 	"bytes"
 	"errors"
-	"fmt"
-	"html/template"
 	"log"
 	"os"
-	"time"
+	"text/template"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/gliderlabs/logspout/router"
 )
 
-// PutRecordsLimit is the maximum number of records allowed for a PutRecords request.
-var PutRecordsLimit = 500
-
-// RecordSizeLimit is the maximum allowed size per record.
-var RecordSizeLimit int = 1 * 1024 * 1024 // 1MB
-
-// PutRecordsSizeLimit is the maximum allowed size per PutRecords request.
-var PutRecordsSizeLimit int = 5 * 1024 * 1024 // 5MB
-
 func init() {
 	router.AdapterFactories.Register(NewKinesisAdapter, "kinesis")
 }
 
 type KinesisAdapter struct {
-	StreamName string
-	client     *kinesis.Kinesis
+	Client   *kinesis.Kinesis
+	Drainers map[string]*Drainer
 }
 
 func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
-	streamName := os.Getenv("KINESIS_STREAM")
-	if streamName == "" {
-		return nil, errors.New("The kinesis stream name is missing. Please set the KINESIS_STREAM env variable.")
-	}
-
-	awsConfig := &aws.Config{Endpoint: &route.Address}
-	client := kinesis.New(awsConfig)
+	drainers := make(map[string]*Drainer)
+	client := kinesis.New(&aws.Config{})
 
 	return &KinesisAdapter{
-		StreamName: streamName,
-		client:     client,
+		Client:   client,
+		Drainers: drainers,
 	}, nil
 }
 
 func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
-	rb := newRecordBuffer(a.client, a.StreamName)
-	ticker := time.NewTicker(time.Second * 1)
-
-STREAM_LOOP:
 	for {
-		select {
-		case l, open := <-logstream:
-			if !open {
-				logErr(rb.Flush())
-				break STREAM_LOOP
-			}
-
-			logErr(rb.Add(l))
-		case <-ticker.C:
-			// Flush buffer every second.
-			logErr(rb.Flush())
-		}
-	}
-}
-
-type recordBuffer struct {
-	client   *kinesis.Kinesis
-	input    *kinesis.PutRecordsInput
-	count    int
-	byteSize int
-}
-
-func newRecordBuffer(client *kinesis.Kinesis, streamName string) *recordBuffer {
-	return &recordBuffer{
-		client: client,
-		input: &kinesis.PutRecordsInput{
-			StreamName: aws.String(streamName),
-			Records:    make([]*kinesis.PutRecordsRequestEntry, 0),
-		},
-	}
-}
-
-func (r *recordBuffer) Add(m *router.Message) error {
-	data := m.Data
-	dataLen := len(data)
-
-	// This record is too large, we can't submit it to kinesis.
-	if dataLen > RecordSizeLimit {
-		return errors.New(fmt.Sprintf("recordBuffer.Add: log data byte size (%d) is over the limit.", dataLen))
-	}
-
-	// Adding this event would make our request have too many records. Flush first.
-	if r.count+1 > PutRecordsLimit {
-		err := r.Flush()
+		m, open := <-logstream
+		d, err := a.findDrainer(m)
 		if err != nil {
-			return err
+			logErr(err)
 		}
-	}
 
-	// Adding this event would make our request too large. Flush first.
-	if r.byteSize+dataLen > PutRecordsSizeLimit {
-		err := r.Flush()
-		if err != nil {
-			return err
+		if !open {
+			logErr(d.Buffer.Flush())
+			break
 		}
+
+		logErr(d.Buffer.Add(m))
 	}
-
-	// Partition key
-	pKey, err := pKey(m)
-	if err != nil {
-		return err
-	}
-
-	// Add to count
-	r.count += 1
-
-	// Add data and partition key size to byteSize
-	r.byteSize += dataLen + len(pKey)
-
-	// Add record
-	r.input.Records = append(r.input.Records, &kinesis.PutRecordsRequestEntry{
-		Data:         []byte(data),
-		PartitionKey: aws.String(pKey),
-	})
-
-	return nil
 }
 
-func (r *recordBuffer) Flush() error {
-	if r.count == 0 {
-		return nil
-	}
+func (a *KinesisAdapter) findDrainer(m *router.Message) (*Drainer, error) {
+	var d *Drainer
+	var ok bool
 
-	defer r.reset()
-
-	_, err := r.client.PutRecords(r.input)
+	streamName, err := streamName(m)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	if d, ok = a.Drainers[streamName]; !ok {
+		d = newDrainer(a.Client, streamName)
+
+		a.Drainers[streamName] = d
+	}
+
+	return d, nil
 }
 
-func (r *recordBuffer) reset() {
-	r.count = 0
-	r.byteSize = 0
-	r.input.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
+func streamName(m *router.Message) (string, error) {
+	streamTmplString := os.Getenv("KINESIS_STREAM_TEMPLATE")
+	if streamTmplString == "" {
+		return "", errors.New("The stream name template is missing. Please set the KINESIS_STREAM_TEMPLATE env variable")
+	}
+
+	streamTmpl, err := template.New("kinesisStream").Parse(streamTmplString)
+	if err != nil {
+		return "", err
+	}
+
+	var streamName bytes.Buffer
+	err = streamTmpl.Execute(&streamName, m)
+	if err != nil {
+		return "", err
+	}
+
+	return streamName.String(), nil
+
 }
 
 func logErr(err error) {
 	if err != nil {
 		log.Println("kinesis: ", err.Error())
 	}
-}
-
-func pKey(m *router.Message) (string, error) {
-	pKeyTmplString := os.Getenv("KINESIS_PARTITION_KEY_TEMPLATE")
-	if pKeyTmplString == "" {
-		return "", errors.New("The partition key template is missing. Please set the KINESIS_PARTITION_KEY_TEMPLATE env variable")
-	}
-
-	pKeyTmpl, err := template.New("kinesis").Parse(pKeyTmplString)
-	if err != nil {
-		return "", err
-	}
-
-	var pKey bytes.Buffer
-	err = pKeyTmpl.Execute(&pKey, m)
-	if err != nil {
-		return "", err
-	}
-
-	return pKey.String(), nil
 }
