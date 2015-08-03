@@ -17,17 +17,23 @@ func init() {
 }
 
 type KinesisAdapter struct {
-	Client   *kinesis.Kinesis
-	Drainers map[string]*Drainer
+	Client     *kinesis.Kinesis
+	Drainers   map[string]*Drainer
+	StreamTmpl *template.Template
 }
 
 func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
 	drainers := make(map[string]*Drainer)
 	client := kinesis.New(&aws.Config{})
+	tmpl, err := streamTmpl()
+	if err != nil {
+		return nil, err
+	}
 
 	return &KinesisAdapter{
-		Client:   client,
-		Drainers: drainers,
+		Client:     client,
+		Drainers:   drainers,
+		StreamTmpl: tmpl,
 	}, nil
 }
 
@@ -54,7 +60,7 @@ func (a *KinesisAdapter) findDrainer(m *router.Message) (*Drainer, error) {
 	var d *Drainer
 	var ok bool
 
-	streamName, err := streamName(m)
+	streamName, err := streamName(a.StreamTmpl, m)
 	if err != nil {
 		return nil, err
 	}
@@ -78,25 +84,28 @@ func (a *KinesisAdapter) FlushAll() []error {
 	return err
 }
 
-func streamName(m *router.Message) (string, error) {
+func streamTmpl() (*template.Template, error) {
 	streamTmplString := os.Getenv("KINESIS_STREAM_TEMPLATE")
 	if streamTmplString == "" {
-		return "", errors.New("The stream name template is missing. Please set the KINESIS_STREAM_TEMPLATE env variable")
+		return nil, errors.New("The stream name template is missing. Please set the KINESIS_STREAM_TEMPLATE env variable")
 	}
 
 	streamTmpl, err := template.New("kinesisStream").Parse(streamTmplString)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
+	return streamTmpl, nil
+}
+
+func streamName(tmpl *template.Template, m *router.Message) (string, error) {
 	var streamName bytes.Buffer
-	err = streamTmpl.Execute(&streamName, m)
+	err := tmpl.Execute(&streamName, m)
 	if err != nil {
 		return "", err
 	}
 
 	return streamName.String(), nil
-
 }
 
 func logErr(err error) {
