@@ -65,6 +65,8 @@ func pKeyTmpl() (*template.Template, error) {
 	return pKeyTmpl, nil
 }
 
+// Add fills the buffer with new data, or flushes it if one of the limit
+// has hit.
 func (r *recordBuffer) Add(m *router.Message) error {
 	data := m.Data
 	dataLen := len(data)
@@ -111,6 +113,7 @@ func (r *recordBuffer) Add(m *router.Message) error {
 	return nil
 }
 
+// Flush flushes the buffer.
 func (r *recordBuffer) Flush() error {
 	mutex.Lock()
 	defer mutex.Unlock()

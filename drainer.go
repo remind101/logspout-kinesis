@@ -23,6 +23,7 @@ func newDrainer(client *kinesis.Kinesis, streamName string) (*Drainer, error) {
 	return d, nil
 }
 
+// Drain flushes the buffer every second.
 func (d *Drainer) Drain() {
 	for range time.Tick(time.Second * 1) {
 		logErr(d.Buffer.Flush())

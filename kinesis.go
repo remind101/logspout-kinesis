@@ -42,7 +42,7 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 		m, open := <-logstream
 		if !open {
 			log.Println("kinesis: Channel is closed, flushing all the buffers")
-			logErrs(a.FlushAll())
+			logErrs(a.flushAll())
 			break
 		}
 
@@ -77,6 +77,7 @@ func (a *KinesisAdapter) findDrainer(m *router.Message) (*Drainer, error) {
 	return d, nil
 }
 
+// FlushAll flushes all the kinesis buffers one by one.
 func (a *KinesisAdapter) FlushAll() []error {
 	var err []error
 
