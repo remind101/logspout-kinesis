@@ -1,0 +1,57 @@
+{
+	"ImportPath": "github.com/remind101/logspout-kinesis",
+	"GoVersion": "go1.4.2",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/aws",
+			"Comment": "v0.7.0-7-ga28ecdc",
+			"Rev": "a28ecdc9741b7905b5198059c94aed20868ffc08"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/endpoints",
+			"Comment": "v0.7.0-7-ga28ecdc",
+			"Rev": "a28ecdc9741b7905b5198059c94aed20868ffc08"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/json/jsonutil",
+			"Comment": "v0.7.0-7-ga28ecdc",
+			"Rev": "a28ecdc9741b7905b5198059c94aed20868ffc08"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/jsonrpc",
+			"Comment": "v0.7.0-7-ga28ecdc",
+			"Rev": "a28ecdc9741b7905b5198059c94aed20868ffc08"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/rest",
+			"Comment": "v0.7.0-7-ga28ecdc",
+			"Rev": "a28ecdc9741b7905b5198059c94aed20868ffc08"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/signer/v4",
+			"Comment": "v0.7.0-7-ga28ecdc",
+			"Rev": "a28ecdc9741b7905b5198059c94aed20868ffc08"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/service/kinesis",
+			"Comment": "v0.7.0-7-ga28ecdc",
+			"Rev": "a28ecdc9741b7905b5198059c94aed20868ffc08"
+		},
+		{
+			"ImportPath": "github.com/fsouza/go-dockerclient",
+			"Rev": "f6e9f5396e0e8f34472efe443d0cb7f9af162b88"
+		},
+		{
+			"ImportPath": "github.com/gliderlabs/logspout/router",
+			"Comment": "v1-72-g0cc61e9",
+			"Rev": "0cc61e97285089f9b682cb4aa0055b4e2ebf2b22"
+		},
+		{
+			"ImportPath": "github.com/vaughan0/go-ini",
+			"Rev": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1"
+		}
+	]
+}
