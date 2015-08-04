@@ -132,7 +132,6 @@ func (r *recordBuffer) Add(m *router.Message) error {
 // Flush flushes the buffer.
 func (r *recordBuffer) Flush() error {
 	mutex.Lock()
-	defer mutex.Unlock()
 
 	if r.count == 0 {
 		return nil
@@ -148,6 +147,7 @@ func (r *recordBuffer) Flush() error {
 	log.Printf("kinesis: buffer flushed, stream name: %s, length: %d\n",
 		*r.input.StreamName, len(r.input.Records))
 
+	mutex.Unlock()
 	return nil
 }
 
