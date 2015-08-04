@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"sync"
 	"text/template"
@@ -122,6 +123,9 @@ func (r *recordBuffer) Add(m *router.Message) error {
 		PartitionKey: aws.String(pKey),
 	})
 
+	log.Printf("kinesis: record added, stream name: %s, partition key: %s, length: %d\n",
+		*r.input.StreamName, pKey, len(r.input.Records))
+
 	return nil
 }
 
@@ -141,6 +145,9 @@ func (r *recordBuffer) Flush() error {
 		return err
 	}
 
+	log.Printf("kinesis: buffer flushed, stream name: %s, length: %d\n",
+		*r.input.StreamName, len(r.input.Records))
+
 	return nil
 }
 
@@ -151,6 +158,9 @@ func (r *recordBuffer) reset() {
 	r.count = 0
 	r.byteSize = 0
 	r.input.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
+
+	log.Printf("kinesis: buffer reset, stream name: %s, length: %d\n",
+		*r.input.StreamName, len(r.input.Records))
 }
 
 func pKey(tmpl *template.Template, m *router.Message) (string, error) {
