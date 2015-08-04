@@ -138,13 +138,13 @@ func (r *recordBuffer) Flush() error {
 
 	defer r.reset()
 
-	_, err := r.client.PutRecords(r.input)
+	resp, err := r.client.PutRecords(r.input)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("kinesis: buffer flushed, stream name: %s, length: %d\n",
-		*r.input.StreamName, len(r.input.Records))
+	log.Printf("kinesis: buffer flushed, stream name: %s, records sent: %d, records failed: %d\n",
+		*r.input.StreamName, len(r.input.Records), *resp.FailedRecordCount)
 
 	return nil
 }
