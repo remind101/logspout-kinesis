@@ -23,15 +23,13 @@ var RecordSizeLimit int = 1 * 1024 * 1024 // 1MB
 // PutRecordsSizeLimit is the maximum allowed size per PutRecords request.
 var PutRecordsSizeLimit int = 5 * 1024 * 1024 // 5MB
 
-// Prevent Flush() and reset() race condition.
-var mutex sync.Mutex
-
 type recordBuffer struct {
 	client   *kinesis.Kinesis
 	pKeyTmpl *template.Template
 	input    *kinesis.PutRecordsInput
 	count    int
 	byteSize int
+	mutex    sync.Mutex
 }
 
 func newRecordBuffer(client *kinesis.Kinesis, streamName string) (*recordBuffer, error) {
@@ -131,7 +129,8 @@ func (r *recordBuffer) Add(m *router.Message) error {
 
 // Flush flushes the buffer.
 func (r *recordBuffer) Flush() error {
-	mutex.Lock()
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
 	if r.count == 0 {
 		return nil
@@ -147,14 +146,10 @@ func (r *recordBuffer) Flush() error {
 	log.Printf("kinesis: buffer flushed, stream name: %s, length: %d\n",
 		*r.input.StreamName, len(r.input.Records))
 
-	mutex.Unlock()
 	return nil
 }
 
 func (r *recordBuffer) reset() {
-	mutex.Lock()
-	defer mutex.Unlock()
-
 	r.count = 0
 	r.byteSize = 0
 	r.input.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
