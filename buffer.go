@@ -65,6 +65,15 @@ func pKeyTmpl() (*template.Template, error) {
 	return pKeyTmpl, nil
 }
 
+type recordSizeLimitError struct {
+	caller string
+	length int
+}
+
+func (e *recordSizeLimitError) Error() string {
+	return fmt.Sprintf("%s: log data byte size (%d) is over the limit.", e.caller, e.length)
+}
+
 // Add fills the buffer with new data, or flushes it if one of the limit
 // has hit.
 func (r *recordBuffer) Add(m *router.Message) error {
@@ -73,7 +82,10 @@ func (r *recordBuffer) Add(m *router.Message) error {
 
 	// This record is too large, we can't submit it to kinesis.
 	if dataLen > RecordSizeLimit {
-		return errors.New(fmt.Sprintf("recordBuffer.Add: log data byte size (%d) is over the limit.", dataLen))
+		return &recordSizeLimitError{
+			caller: "recordBuffer.Add",
+			length: dataLen,
+		}
 	}
 
 	// Adding this event would make our request have too many records. Flush first.

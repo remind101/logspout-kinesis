@@ -42,7 +42,7 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 		m, open := <-logstream
 		if !open {
 			log.Println("kinesis: Channel is closed, flushing all the buffers")
-			logErrs(a.flushAll())
+			logErrs(a.FlushAll())
 			break
 		}
 
