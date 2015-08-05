@@ -1,7 +1,6 @@
 package kinesis
 
 import (
-	"bytes"
 	"log"
 	"text/template"
 
@@ -58,7 +57,7 @@ func (a *KinesisAdapter) findDrainer(m *router.Message) (*Drainer, error) {
 	var d *Drainer
 	var ok bool
 
-	streamName, err := streamName(a.StreamTmpl, m)
+	streamName, err := executeTmpl(a.StreamTmpl, m)
 	if err != nil {
 		return nil, err
 	}
@@ -84,16 +83,6 @@ func (a *KinesisAdapter) FlushAll() []error {
 	}
 
 	return err
-}
-
-func streamName(tmpl *template.Template, m *router.Message) (string, error) {
-	var streamName bytes.Buffer
-	err := tmpl.Execute(&streamName, m)
-	if err != nil {
-		return "", err
-	}
-
-	return streamName.String(), nil
 }
 
 func logErr(err error) {

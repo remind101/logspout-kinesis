@@ -1,7 +1,6 @@
 package kinesis
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"sync"
@@ -88,7 +87,7 @@ func (r *recordBuffer) Add(m *router.Message) error {
 	}
 
 	// Partition key
-	pKey, err := pKey(r.pKeyTmpl, m)
+	pKey, err := executeTmpl(r.pKeyTmpl, m)
 	if err != nil {
 		return err
 	}
@@ -140,14 +139,4 @@ func (r *recordBuffer) reset() {
 
 	log.Printf("kinesis: buffer reset, stream name: %s, length: %d\n",
 		*r.input.StreamName, len(r.input.Records))
-}
-
-func pKey(tmpl *template.Template, m *router.Message) (string, error) {
-	var pKey bytes.Buffer
-	err := tmpl.Execute(&pKey, m)
-	if err != nil {
-		return "", err
-	}
-
-	return pKey.String(), nil
 }

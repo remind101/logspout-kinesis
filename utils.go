@@ -1,9 +1,12 @@
 package kinesis
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"text/template"
+
+	"github.com/gliderlabs/logspout/router"
 )
 
 type missingEnvVarError struct {
@@ -27,4 +30,14 @@ func compileTmpl(envVar string, tmplName string) (*template.Template, error) {
 	}
 
 	return tmpl, nil
+}
+
+func executeTmpl(tmpl *template.Template, m *router.Message) (string, error) {
+	var res bytes.Buffer
+	err := tmpl.Execute(&res, m)
+	if err != nil {
+		return "", err
+	}
+
+	return res.String(), nil
 }
