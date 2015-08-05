@@ -2,10 +2,8 @@ package kinesis
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log"
-	"os"
 	"sync"
 	"text/template"
 
@@ -33,7 +31,7 @@ type recordBuffer struct {
 }
 
 func newRecordBuffer(client *kinesis.Kinesis, streamName string) (*recordBuffer, error) {
-	pKeyTmpl, err := pKeyTmpl()
+	pKeyTmpl, err := compileTmpl("KINESIS_PARTITION_KEY_TEMPLATE", "partition key")
 	if err != nil {
 		return nil, err
 	}
@@ -48,20 +46,6 @@ func newRecordBuffer(client *kinesis.Kinesis, streamName string) (*recordBuffer,
 		pKeyTmpl: pKeyTmpl,
 		input:    input,
 	}, nil
-}
-
-func pKeyTmpl() (*template.Template, error) {
-	pKeyTmplString := os.Getenv("KINESIS_PARTITION_KEY_TEMPLATE")
-	if pKeyTmplString == "" {
-		return nil, errors.New("The partition key template is missing. Please set the KINESIS_PARTITION_KEY_TEMPLATE env variable")
-	}
-
-	pKeyTmpl, err := template.New("kinesisPartitionKey").Parse(pKeyTmplString)
-	if err != nil {
-		return nil, err
-	}
-
-	return pKeyTmpl, nil
 }
 
 type recordSizeLimitError struct {
