@@ -84,17 +84,3 @@ func (a *KinesisAdapter) FlushAll() []error {
 
 	return err
 }
-
-func logErr(err error) {
-	if err != nil {
-		log.Println("kinesis: ", err.Error())
-	}
-}
-
-func logErrs(err []error) {
-	if err != nil {
-		for _, e := range err {
-			log.Println("kinesis: ", e.Error())
-		}
-	}
-}

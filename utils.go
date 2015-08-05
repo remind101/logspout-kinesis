@@ -3,6 +3,7 @@ package kinesis
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os"
 	"text/template"
 
@@ -40,4 +41,18 @@ func executeTmpl(tmpl *template.Template, m *router.Message) (string, error) {
 	}
 
 	return res.String(), nil
+}
+
+func logErr(err error) {
+	if err != nil {
+		log.Println("kinesis: ", err.Error())
+	}
+}
+
+func logErrs(err []error) {
+	if err != nil {
+		for _, e := range err {
+			log.Println("kinesis: ", e.Error())
+		}
+	}
 }
