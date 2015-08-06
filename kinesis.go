@@ -89,5 +89,6 @@ func (a *KinesisAdapter) addDrainer(streamName string, d *Drainer) {
 	a.mutex.Lock()
 	defer a.mutex.Unlock()
 
+	log.Printf("kinesis: adding drainer %s\n", streamName)
 	a.Drainers[streamName] = d
 }

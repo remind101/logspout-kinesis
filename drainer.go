@@ -34,6 +34,7 @@ func newDrainer(a *KinesisAdapter, streamName string) {
 			logErr(err)
 		}
 	} else {
+		log.Printf("kinesis: need to create stream for %s\n", streamName)
 		go waitForActive(a, d)
 	}
 }
@@ -69,6 +70,6 @@ func waitForActive(a *KinesisAdapter, d *Drainer) {
 			time.Sleep(4 * time.Second)
 		}
 
-		log.Printf("kinesis: STREAM '%s' STATUS: %s\n", streamName, streamStatus)
+		log.Printf("kinesis: status for stream %s: %s\n", streamName, streamStatus)
 	}
 }
