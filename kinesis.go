@@ -10,8 +10,6 @@ import (
 	"github.com/gliderlabs/logspout/router"
 )
 
-var mutex sync.Mutex
-
 func init() {
 	router.AdapterFactories.Register(NewKinesisAdapter, "kinesis")
 }
@@ -19,11 +17,14 @@ func init() {
 type KinesisAdapter struct {
 	Client     *kinesis.Kinesis
 	Drainers   map[string]*Drainer
+	Launched   map[string]bool
 	StreamTmpl *template.Template
+	mutex      sync.Mutex
 }
 
 func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
 	drainers := make(map[string]*Drainer)
+	launched := make(map[string]bool)
 	client := kinesis.New(&aws.Config{})
 	tmpl, err := compileTmpl("KINESIS_STREAM_TEMPLATE")
 	if err != nil {
@@ -33,11 +34,10 @@ func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
 	return &KinesisAdapter{
 		Client:     client,
 		Drainers:   drainers,
+		Launched:   launched,
 		StreamTmpl: tmpl,
 	}, nil
 }
-
-var foo = make(map[string]bool)
 
 func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 	for {
@@ -57,9 +57,9 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 		if d, ok := a.findDrainer(streamName); ok {
 			logErr(d.Buffer.Add(m))
 		} else {
-			if !foo[streamName] {
+			if _, ok := a.Launched[streamName]; !ok {
 				go newDrainer(a, streamName)
-				foo[streamName] = true
+				a.Launched[streamName] = true
 			}
 		}
 	}
@@ -77,8 +77,8 @@ func (a *KinesisAdapter) FlushAll() []error {
 }
 
 func (a *KinesisAdapter) findDrainer(streamName string) (*Drainer, bool) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 
 	d, ok := a.Drainers[streamName]
 
@@ -86,8 +86,8 @@ func (a *KinesisAdapter) findDrainer(streamName string) (*Drainer, bool) {
 }
 
 func (a *KinesisAdapter) addDrainer(streamName string, d *Drainer) {
-	mutex.Lock()
-	defer mutex.Unlock()
+	a.mutex.Lock()
+	defer a.mutex.Unlock()
 
 	a.Drainers[streamName] = d
 }

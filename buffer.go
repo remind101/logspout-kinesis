@@ -27,7 +27,6 @@ type recordBuffer struct {
 	count    int
 	byteSize int
 	mutex    sync.Mutex
-	active   chan bool
 }
 
 func newRecordBuffer(client *kinesis.Kinesis, streamName string) (*recordBuffer, error) {
@@ -45,7 +44,6 @@ func newRecordBuffer(client *kinesis.Kinesis, streamName string) (*recordBuffer,
 		client:   client,
 		pKeyTmpl: pKeyTmpl,
 		input:    input,
-		active:   make(chan bool),
 	}, nil
 }
 
@@ -114,7 +112,6 @@ func (r *recordBuffer) Add(m *router.Message) error {
 
 // Flush flushes the buffer.
 func (r *recordBuffer) Flush() error {
-	// <-r.active
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
