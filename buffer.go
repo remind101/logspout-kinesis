@@ -30,7 +30,7 @@ type recordBuffer struct {
 }
 
 func newRecordBuffer(client *kinesis.Kinesis, streamName string) (*recordBuffer, error) {
-	pKeyTmpl, err := compileTmpl("KINESIS_PARTITION_KEY_TEMPLATE", "partition key")
+	pKeyTmpl, err := compileTmpl("KINESIS_PARTITION_KEY_TEMPLATE")
 	if err != nil {
 		return nil, err
 	}

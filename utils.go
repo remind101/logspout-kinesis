@@ -11,18 +11,17 @@ import (
 )
 
 type missingEnvVarError struct {
-	envVar   string
-	tmplName string
+	envVar string
 }
 
 func (e *missingEnvVarError) Error() string {
-	return fmt.Sprintf("The %s template is missing. Please set the %s env variable\n", e.tmplName, e.envVar)
+	return fmt.Sprintf("Missing required %s environment variable.\n", e.envVar)
 }
 
-func compileTmpl(envVar string, tmplName string) (*template.Template, error) {
+func compileTmpl(envVar string) (*template.Template, error) {
 	tmplString := os.Getenv(envVar)
 	if tmplString == "" {
-		return nil, &missingEnvVarError{envVar: envVar, tmplName: tmplName}
+		return nil, &missingEnvVarError{envVar: envVar}
 	}
 
 	tmpl, err := template.New("").Parse(tmplString)
@@ -52,7 +51,7 @@ func logErr(err error) {
 func logErrs(err []error) {
 	if err != nil {
 		for _, e := range err {
-			log.Println("kinesis: ", e.Error())
+			logErr(e)
 		}
 	}
 }

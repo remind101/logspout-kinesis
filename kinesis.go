@@ -22,7 +22,7 @@ type KinesisAdapter struct {
 func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
 	drainers := make(map[string]*Drainer)
 	client := kinesis.New(&aws.Config{})
-	tmpl, err := compileTmpl("KINESIS_STREAM_TEMPLATE", "stream template")
+	tmpl, err := compileTmpl("KINESIS_STREAM_TEMPLATE")
 	if err != nil {
 		return nil, err
 	}
