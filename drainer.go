@@ -35,7 +35,7 @@ func newDrainer(a *KinesisAdapter, streamName string) {
 		}
 	} else {
 		log.Printf("kinesis: need to create stream for %s\n", streamName)
-		go waitForActive(a, d)
+		waitForActive(a, d)
 	}
 }
 
