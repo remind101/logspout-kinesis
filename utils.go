@@ -5,10 +5,15 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"text/template"
 
 	"github.com/gliderlabs/logspout/router"
 )
+
+var funcMap = template.FuncMap{
+	"lookUp": lookUp,
+}
 
 type missingEnvVarError struct {
 	envVar string
@@ -24,7 +29,7 @@ func compileTmpl(envVar string) (*template.Template, error) {
 		return nil, &missingEnvVarError{envVar: envVar}
 	}
 
-	tmpl, err := template.New("").Parse(tmplString)
+	tmpl, err := template.New("").Funcs(funcMap).Parse(tmplString)
 	if err != nil {
 		return nil, err
 	}
@@ -40,6 +45,18 @@ func executeTmpl(tmpl *template.Template, m *router.Message) (string, error) {
 	}
 
 	return res.String(), nil
+}
+
+// lookUp searches into an array of environment variable by key,
+// and returns the value.
+func lookUp(arr []string, key string) string {
+	for _, v := range arr {
+		parts := strings.Split(v, "=")
+		if key == parts[0] {
+			return parts[1]
+		}
+	}
+	return ""
 }
 
 func logErr(err error) {
