@@ -23,6 +23,13 @@ For instance, you can decide to assign a Kinesis stream for each of you app (ass
 $ export KINESIS_STREAM_TEMPLATE={{ index .Container.Config.Labels "app" }}
 ```
 
+Or you can use environment variables, with our provided lookUp template function:
+```console
+$ export KINESIS_STREAM_TEMPLATE={{ lookUp .Container.Config.Env "APP_ID" }}
+```
+
+This will search through `.Container.Config.Env` for `APP_ID=*` and return the value after the `=`.
+
 You can similarly decide the format of your partition key for each of your stream (here the app name and process type):
 ```console
 $ export KINESIS_PARTITION_KEY_TEMPLATE={{ index .Container.Config.Labels "app" }}.{{ index .Container.Config.Labels "process.type" }}
