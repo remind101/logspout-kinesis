@@ -1,10 +1,7 @@
 package kinesis
 
 import (
-	"bytes"
-	"errors"
 	"log"
-	"os"
 	"text/template"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -25,7 +22,7 @@ type KinesisAdapter struct {
 func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
 	drainers := make(map[string]*Drainer)
 	client := kinesis.New(&aws.Config{})
-	tmpl, err := streamTmpl()
+	tmpl, err := compileTmpl("KINESIS_STREAM_TEMPLATE")
 	if err != nil {
 		return nil, err
 	}
@@ -60,7 +57,7 @@ func (a *KinesisAdapter) findDrainer(m *router.Message) (*Drainer, error) {
 	var d *Drainer
 	var ok bool
 
-	streamName, err := streamName(a.StreamTmpl, m)
+	streamName, err := executeTmpl(a.StreamTmpl, m)
 	if err != nil {
 		return nil, err
 	}
@@ -86,42 +83,4 @@ func (a *KinesisAdapter) FlushAll() []error {
 	}
 
 	return err
-}
-
-func streamTmpl() (*template.Template, error) {
-	streamTmplString := os.Getenv("KINESIS_STREAM_TEMPLATE")
-	if streamTmplString == "" {
-		return nil, errors.New("The stream name template is missing. Please set the KINESIS_STREAM_TEMPLATE env variable")
-	}
-
-	streamTmpl, err := template.New("kinesisStream").Parse(streamTmplString)
-	if err != nil {
-		return nil, err
-	}
-
-	return streamTmpl, nil
-}
-
-func streamName(tmpl *template.Template, m *router.Message) (string, error) {
-	var streamName bytes.Buffer
-	err := tmpl.Execute(&streamName, m)
-	if err != nil {
-		return "", err
-	}
-
-	return streamName.String(), nil
-}
-
-func logErr(err error) {
-	if err != nil {
-		log.Println("kinesis: ", err.Error())
-	}
-}
-
-func logErrs(err []error) {
-	if err != nil {
-		for _, e := range err {
-			log.Println("kinesis: ", e.Error())
-		}
-	}
 }
