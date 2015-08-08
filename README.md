@@ -38,6 +38,9 @@ $ export KINESIS_PARTITION_KEY_TEMPLATE={{ index .Container.Config.Labels "app" 
 ### stream creation
 By default, **logspout-kinesis** doesn't create a stream if it is missing from Kinesis. You can enable this by creating an environment variable `KINESIS_STREAM_CREATION` and set it to `true`.
 
+### logging
+To activate logging, set the `KINESIS_DEBUG` environment variable to `true`.
+
 ## build
 **logspout-kinesis** is a custom logspout module. To use it, create an empty Dockerfile based on `gliderlabs/logspout:master`, and import this `logspout-kinesis` package into a new `modules.go` file. The `gliderlabs/logspout` base image will `ONBUILD COPY` and replace the original `modules.go`. 
 

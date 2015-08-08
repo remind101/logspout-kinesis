@@ -72,3 +72,9 @@ func logErrs(err []error) {
 		}
 	}
 }
+
+func debugLog(l string) {
+	if os.Getenv("KINESIS_DEBUG") == "true" {
+		log.Println(l)
+	}
+}
