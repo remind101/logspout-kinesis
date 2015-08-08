@@ -116,6 +116,7 @@ func (r *recordBuffer) Flush() error {
 	defer r.mutex.Unlock()
 
 	if r.count == 0 {
+		log.Printf("kinesis: nothing to flush, stream name: %s\n", *r.input.StreamName)
 		return nil
 	}
 
