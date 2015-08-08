@@ -73,8 +73,8 @@ func logErrs(err []error) {
 	}
 }
 
-func debugLog(l string) {
+func debugLog(format string, p ...interface{}) {
 	if os.Getenv("KINESIS_DEBUG") == "true" {
-		log.Println(l)
+		log.Printf(format, p)
 	}
 }
