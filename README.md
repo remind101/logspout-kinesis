@@ -35,6 +35,9 @@ You can similarly decide the format of your partition key for each of your strea
 $ export KINESIS_PARTITION_KEY_TEMPLATE={{ index .Container.Config.Labels "app" }}.{{ index .Container.Config.Labels "process.type" }}
 ```
 
+### stream creation
+By default, **logspout-kinesis** doesn't create a stream if it is missing from Kinesis. You can enable this by creating an environment variable `KINESIS_STREAM_CREATION` and set it to `true`.
+
 ## build
 **logspout-kinesis** is a custom logspout module. To use it, create an empty Dockerfile based on `gliderlabs/logspout:master`, and import this `logspout-kinesis` package into a new `modules.go` file. The `gliderlabs/logspout` base image will `ONBUILD COPY` and replace the original `modules.go`. 
 
