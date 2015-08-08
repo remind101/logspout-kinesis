@@ -103,7 +103,7 @@ func (r *recordBuffer) Add(m *router.Message) error {
 		PartitionKey: aws.String(pKey),
 	})
 
-	debugLog(fmt.Sprintf("kinesis: record added, stream name: %s, partition key: %s, length: %d\n",
+	debugLog(fmt.Sprintf("kinesis: record added, stream name: %s, partition key: %s, length: %d",
 		*r.input.StreamName, pKey, len(r.input.Records)))
 
 	return nil
@@ -115,7 +115,7 @@ func (r *recordBuffer) Flush() error {
 	defer r.mutex.Unlock()
 
 	if r.count == 0 {
-		debugLog(fmt.Sprintf("kinesis: nothing to flush, stream name: %s\n", *r.input.StreamName))
+		debugLog(fmt.Sprintf("kinesis: nothing to flush, stream name: %s", *r.input.StreamName))
 		return nil
 	}
 
@@ -126,7 +126,7 @@ func (r *recordBuffer) Flush() error {
 		return err
 	}
 
-	debugLog(fmt.Sprintf("kinesis: buffer flushed, stream name: %s, records sent: %d, records failed: %d\n",
+	debugLog(fmt.Sprintf("kinesis: buffer flushed, stream name: %s, records sent: %d, records failed: %d",
 		*r.input.StreamName, len(r.input.Records), *resp.FailedRecordCount))
 
 	return nil
@@ -137,6 +137,6 @@ func (r *recordBuffer) reset() {
 	r.byteSize = 0
 	r.input.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
 
-	debugLog(fmt.Sprintf("kinesis: buffer reset, stream name: %s, length: %d\n",
+	debugLog(fmt.Sprintf("kinesis: buffer reset, stream name: %s, length: %d",
 		*r.input.StreamName, len(r.input.Records)))
 }
