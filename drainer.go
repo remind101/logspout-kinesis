@@ -1,7 +1,6 @@
 package kinesis
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -54,7 +53,7 @@ func createStream(a *KinesisAdapter, d *Drainer, streamName string) {
 			logErr(err)
 		}
 	} else {
-		debugLog(fmt.Sprintf("kinesis: need to create stream for %s", streamName))
+		debugLog("kinesis: need to create stream for %s", streamName)
 		waitForActive(a, d)
 	}
 }
@@ -74,6 +73,6 @@ func waitForActive(a *KinesisAdapter, d *Drainer) {
 			time.Sleep(4 * time.Second)
 		}
 
-		debugLog(fmt.Sprintf("kinesis: status for stream %s: %s", streamName, streamStatus))
+		debugLog("kinesis: status for stream %s: %s", streamName, streamStatus)
 	}
 }
