@@ -54,6 +54,10 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 			break
 		}
 
+		if streamName == "" {
+			continue
+		}
+
 		if d, ok := a.findDrainer(streamName); ok {
 			logErr(d.Buffer.Add(m))
 		} else {
