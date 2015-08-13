@@ -95,6 +95,7 @@ func (r *recordBuffer) Add(m *router.Message) error {
 	// We default to a uuid if the template didn't match.
 	if pKey == "" {
 		pKey = uuid.New()
+		debugLog("The partition key is an empty string, defaulting to a uuid %s\n", pKey)
 	}
 
 	// Add to count
