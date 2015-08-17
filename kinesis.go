@@ -63,7 +63,7 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 			logErr(d.Buffer.Add(m))
 		} else {
 			if _, ok := a.Launched[streamName]; !ok {
-				go newDrainer(a, streamName)
+				go newDrainer(a, streamName, m)
 				a.Launched[streamName] = true
 			}
 		}

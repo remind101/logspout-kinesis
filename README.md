@@ -2,7 +2,7 @@
 
 A [Logspout](https://github.com/gliderlabs/logspout) adapter for writing Docker container logs to [Amazon Kinesis](http://aws.amazon.com/kinesis/).
 
-## usage 
+## usage
 After you created your custom Logspout build (see below), you can just run it as:
 ```console
 $ 	docker run --rm \
@@ -42,11 +42,22 @@ $ export KINESIS_PARTITION_KEY_TEMPLATE={{ index .Container.Config.Labels "app" 
 ### stream creation
 By default, **logspout-kinesis** doesn't create a stream if it is missing from Kinesis. You can enable this by creating an environment variable `KINESIS_STREAM_CREATION` and set it to `true`.
 
+### stream tagging
+By default, **logspout-kinesis** doesn't tag a stream it just created. You can enable this by creating an environment variable `KINESIS_TAG_STREAM` and set it to `true`.
+Then you can set the `KINESIS_STREAM_TAG_KEY` environment variable to set the tag key, and the `KINESIS_STREAM_TAG_VALUE` variable to set the template you want to use for the tag value.
+
+A complete example would be:
+```console
+KINESIS_TAG_STREAM=true
+KINESIS_STREAM_TAG_KEY="app"
+KINESIS_STREAM_TAG_VALUE={{ lookUp .Container.Config.Env "EMPIRE_APPNAME" }}
+```
+
 ### logging
 To activate logging, set the `KINESIS_DEBUG` environment variable to `true`.
 
 ## build
-**logspout-kinesis** is a custom logspout module. To use it, create an empty Dockerfile based on `gliderlabs/logspout:master`, and import this `logspout-kinesis` package into a new `modules.go` file. The `gliderlabs/logspout` base image will `ONBUILD COPY` and replace the original `modules.go`. 
+**logspout-kinesis** is a custom logspout module. To use it, create an empty Dockerfile based on `gliderlabs/logspout:master`, and import this `logspout-kinesis` package into a new `modules.go` file. The `gliderlabs/logspout` base image will `ONBUILD COPY` and replace the original `modules.go`.
 
 The following example creates a minimal logspout image capable of writing Dockers logs to Kinesis:
 
