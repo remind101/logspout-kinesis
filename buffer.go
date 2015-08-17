@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/gliderlabs/logspout/router"
+	"github.com/pborman/uuid"
 )
 
 // PutRecordsLimit is the maximum number of records allowed for a PutRecords request.
@@ -89,6 +90,12 @@ func (r *recordBuffer) Add(m *router.Message) error {
 	pKey, err := executeTmpl(r.pKeyTmpl, m)
 	if err != nil {
 		return err
+	}
+
+	// We default to a uuid if the template didn't match.
+	if pKey == "" {
+		pKey = uuid.New()
+		debugLog("The partition key is an empty string, defaulting to a uuid %s\n", pKey)
 	}
 
 	// Add to count

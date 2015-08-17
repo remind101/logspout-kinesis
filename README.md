@@ -37,6 +37,8 @@ You can similarly decide the format of your partition key for each of your strea
 $ export KINESIS_PARTITION_KEY_TEMPLATE={{ index .Container.Config.Labels "app" }}.{{ index .Container.Config.Labels "process.type" }}
 ```
 
+**IMPORTANT**: if the partition key end up being an empty string, logspout-kinesis will default to set it as a uuid. If debug logging is activated (see below), it will tell you so.
+
 ### stream creation
 By default, **logspout-kinesis** doesn't create a stream if it is missing from Kinesis. You can enable this by creating an environment variable `KINESIS_STREAM_CREATION` and set it to `true`.
 
