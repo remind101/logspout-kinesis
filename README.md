@@ -30,6 +30,8 @@ $ export KINESIS_STREAM_TEMPLATE={{ lookUp .Container.Config.Env "APP_ID" }}
 
 This will search through `.Container.Config.Env` for `APP_ID=*` and return the value after the `=`.
 
+**IMPORTANT**: if executing the stream name template results in an empty string, logspout-kinesis won't stream the log message. If debug logging is activated (see below), it will tell you so.
+
 You can similarly decide the format of your partition key for each of your stream (here the app name and process type):
 ```console
 $ export KINESIS_PARTITION_KEY_TEMPLATE={{ index .Container.Config.Labels "app" }}.{{ index .Container.Config.Labels "process.type" }}
