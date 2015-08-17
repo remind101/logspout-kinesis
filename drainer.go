@@ -1,6 +1,7 @@
 package kinesis
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -91,6 +92,9 @@ func tagStream(a *KinesisAdapter, streamName string, m *router.Message) error {
 			return err
 		}
 
+		if tagValue == "" {
+			return fmt.Errorf("The tag value is empty, check your template KINESIS_STREAM_TAG_VALUE.")
+		}
 
 		tags := map[string]*string{
 			tagKey: aws.String(tagValue),
