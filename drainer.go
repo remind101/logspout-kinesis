@@ -80,32 +80,29 @@ func waitForActive(a *KinesisAdapter, d *Drainer, m *router.Message) {
 }
 
 func tagStream(a *KinesisAdapter, streamName string, m *router.Message) error {
-	if os.Getenv("KINESIS_TAG_STREAM") == "true" {
-		if tagKey := os.Getenv("KINESIS_STREAM_TAG_KEY"); tagKey != "" {
-			tmpl, err := compileTmpl("KINESIS_STREAM_TAG_VALUE")
-			if err != nil {
-				return err
-			}
-
-			tagValue, err := executeTmpl(tmpl, m)
-			if err != nil {
-				return err
-			}
-
-			tags := map[string]*string{
-				tagKey: aws.String(tagValue),
-			}
-
-			params := &kinesis.AddTagsToStreamInput{
-				StreamName: aws.String(streamName),
-				Tags:       tags,
-			}
-
-			_, err = a.Client.AddTagsToStream(params)
+	if tagKey := os.Getenv("KINESIS_STREAM_TAG_KEY"); tagKey != "" {
+		tmpl, err := compileTmpl("KINESIS_STREAM_TAG_VALUE")
+		if err != nil {
 			return err
 		}
 
-		return nil
+		tagValue, err := executeTmpl(tmpl, m)
+		if err != nil {
+			return err
+		}
+
+
+		tags := map[string]*string{
+			tagKey: aws.String(tagValue),
+		}
+
+		params := &kinesis.AddTagsToStreamInput{
+			StreamName: aws.String(streamName),
+			Tags:       tags,
+		}
+
+		_, err = a.Client.AddTagsToStream(params)
+		return err
 	}
 
 	return nil
