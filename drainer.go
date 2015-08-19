@@ -47,6 +47,7 @@ func createStream(a *KinesisAdapter, d *Drainer, streamName string, m *router.Me
 	if err != nil {
 		if reqErr, ok := err.(awserr.RequestFailure); ok {
 			if reqErr.Code() == "ResourceInUseException" {
+				logErr(tagStream(a, streamName, m))
 				a.addDrainer(streamName, d)
 			} else {
 				logErr(err)
