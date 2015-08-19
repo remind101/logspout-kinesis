@@ -70,6 +70,9 @@ func (r *recordBuffer) Add(m *router.Message) error {
 		}
 	}
 
+	defer r.mutex.Unlock()
+	r.mutex.Lock()
+
 	// Adding this event would make our request have too many records. Flush first.
 	if r.count+1 > PutRecordsLimit {
 		err := r.Flush()
