@@ -58,26 +58,28 @@ func (e *recordSizeLimitError) Error() string {
 
 // Add fills the buffer with new data, or flushes it if one of the limit
 // has hit.
-func (r *recordBuffer) Add(m *router.Message) error {
+func (r *recordBuffer) Add(m *router.Message) {
 	data := m.Data
 	dataLen := len(data)
 
 	// This record is too large, we can't submit it to kinesis.
 	if dataLen > RecordSizeLimit {
-		return &recordSizeLimitError{
+		logErr(&recordSizeLimitError{
 			caller: "recordBuffer.Add",
 			length: dataLen,
-		}
+		})
+		return
 	}
 
-	defer r.mutex.Unlock()
 	r.mutex.Lock()
+	defer r.mutex.Unlock()
 
 	// Adding this event would make our request have too many records. Flush first.
 	if r.count+1 > PutRecordsLimit {
 		err := r.Flush()
 		if err != nil {
-			return err
+			logErr(err)
+			return
 		}
 	}
 
@@ -85,14 +87,16 @@ func (r *recordBuffer) Add(m *router.Message) error {
 	if r.byteSize+dataLen > PutRecordsSizeLimit {
 		err := r.Flush()
 		if err != nil {
-			return err
+			logErr(err)
+			return
 		}
 	}
 
 	// Partition key
 	pKey, err := executeTmpl(r.pKeyTmpl, m)
 	if err != nil {
-		return err
+		logErr(err)
+		return
 	}
 
 	// We default to a uuid if the template didn't match.
@@ -115,8 +119,6 @@ func (r *recordBuffer) Add(m *router.Message) error {
 
 	debugLog("kinesis: record added, stream name: %s, partition key: %s, length: %d",
 		*r.input.StreamName, pKey, len(r.input.Records))
-
-	return nil
 }
 
 // Flush flushes the buffer.

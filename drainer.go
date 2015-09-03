@@ -34,7 +34,7 @@ func newDrainer(a *KinesisAdapter, streamName string, m *router.Message) {
 // Drain flushes the buffer every second.
 func (d *Drainer) Drain() {
 	for _ = range time.Tick(time.Second * 1) {
-		logErr(d.Buffer.Flush())
+		d.Buffer.Flush()
 	}
 }
 
