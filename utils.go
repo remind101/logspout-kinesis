@@ -65,14 +65,6 @@ func logErr(err error) {
 	}
 }
 
-func logErrs(err []error) {
-	if err != nil {
-		for _, e := range err {
-			logErr(e)
-		}
-	}
-}
-
 func debugLog(format string, p ...interface{}) {
 	if os.Getenv("KINESIS_DEBUG") == "true" {
 		log.Printf(format, p...)

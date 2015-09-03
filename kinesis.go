@@ -41,12 +41,7 @@ func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
 
 func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 	for {
-		m, open := <-logstream
-		if !open {
-			log.Println("kinesis: Channel is closed, flushing all the buffers")
-			logErrs(a.FlushAll())
-			break
-		}
+		m := <-logstream
 
 		streamName, err := executeTmpl(a.StreamTmpl, m)
 		if err != nil {
@@ -68,17 +63,6 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 			}
 		}
 	}
-}
-
-// FlushAll flushes all the kinesis buffers one by one.
-func (a *KinesisAdapter) FlushAll() []error {
-	var err []error
-
-	for _, d := range a.Drainers {
-		err = append(err, d.Buffer.Flush())
-	}
-
-	return err
 }
 
 func (a *KinesisAdapter) findDrainer(streamName string) (*Drainer, bool) {
