@@ -1,13 +1,10 @@
 package kinesis
 
 import (
-	"log"
-	"sync"
 	"text/template"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/gliderlabs/logspout/router"
+	"github.com/remind101/logspout-kinesis/kineprod"
 )
 
 func init() {
@@ -15,69 +12,42 @@ func init() {
 }
 
 type KinesisAdapter struct {
-	Client     *kinesis.Kinesis
-	Drainers   map[string]*Drainer
-	Launched   map[string]bool
+	Streams    map[string]*kineprod.Stream
 	StreamTmpl *template.Template
-	mutex      sync.Mutex
 }
 
 func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
-	drainers := make(map[string]*Drainer)
-	launched := make(map[string]bool)
-	client := kinesis.New(&aws.Config{})
+	streams := make(map[string]*kineprod.Stream)
 	tmpl, err := compileTmpl("KINESIS_STREAM_TEMPLATE")
 	if err != nil {
 		return nil, err
 	}
 
 	return &KinesisAdapter{
-		Client:     client,
-		Drainers:   drainers,
-		Launched:   launched,
+		Streams:    streams,
 		StreamTmpl: tmpl,
 	}, nil
 }
 
 func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
-	for {
-		m := <-logstream
-
-		streamName, err := executeTmpl(a.StreamTmpl, m)
+	for m := range logstream {
+		sn, err := executeTmpl(a.StreamTmpl, m)
 		if err != nil {
 			logErr(err)
 			break
 		}
 
-		if streamName == "" {
+		if sn == "" {
 			debugLog("The stream name is empty, couldn't match the template. Skipping the log.\n")
 			continue
 		}
 
-		if d, ok := a.findDrainer(streamName); ok {
-			go d.Buffer.Add(m)
+		if s, ok := a.Streams[sn]; ok {
+			logErr(s.Write(m))
 		} else {
-			if _, ok := a.Launched[streamName]; !ok {
-				go newDrainer(a, streamName, m)
-				a.Launched[streamName] = true
-			}
+			s := kineprod.New(sn, m)
+			s.Start()
+			a.Streams[sn] = s
 		}
 	}
-}
-
-func (a *KinesisAdapter) findDrainer(streamName string) (*Drainer, bool) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	d, ok := a.Drainers[streamName]
-
-	return d, ok
-}
-
-func (a *KinesisAdapter) addDrainer(streamName string, d *Drainer) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	log.Printf("kinesis: added drainer %s\n", streamName)
-	a.Drainers[streamName] = d
 }

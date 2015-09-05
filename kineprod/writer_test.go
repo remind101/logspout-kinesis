@@ -1,4 +1,4 @@
-package kinesis
+package kineprod
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 )
 
 type fakeBuffer struct {
-	d [][]byte
+	d []byte
 }
 
 type fakeFlusher struct {
@@ -14,7 +14,7 @@ type fakeFlusher struct {
 	flushed   chan struct{}
 }
 
-func (f *fakeFlusher) flush([][]byte) {
+func (f *fakeFlusher) flush([]byte) {
 	if f.flushFunc == nil {
 		close(f.flushed)
 	} else {
@@ -22,34 +22,34 @@ func (f *fakeFlusher) flush([][]byte) {
 	}
 }
 
-func (b *fakeBuffer) data() [][]byte {
+func (b *fakeBuffer) data() []byte {
 	return b.d
 }
 
 func (b *fakeBuffer) add(d []byte) {
-	b.d = append(b.d, d)
+	b.d = append(b.d, d...)
 }
 
 func (b *fakeBuffer) full() bool {
 	return len(b.d) == 2
 }
 
-func TestStream_Flush(t *testing.T) {
+func TestWriter_Flush(t *testing.T) {
 	b := &fakeBuffer{}
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),
 	}
 
-	s := newStream()
-	s.newBuffer = func() buffer {
+	w := newWriter()
+	w.newBuffer = func() buffer {
 		return b
 	}
-	s.flusher = f
-	s.ticker = nil
+	w.flusher = f
+	w.ticker = nil
 
-	s.start()
-	s.add([]byte{'h'})
-	s.add([]byte{'h'})
+	w.start()
+	w.Write([]byte{'h'})
+	w.Write([]byte{'h'})
 
 	select {
 	case <-f.flushed:
@@ -58,23 +58,23 @@ func TestStream_Flush(t *testing.T) {
 	}
 }
 
-func TestStream_PeriodicFlush(t *testing.T) {
+func TestWriter_PeriodicFlush(t *testing.T) {
 	b := &fakeBuffer{}
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),
 	}
 
-	s := newStream()
-	s.newBuffer = func() buffer {
+	w := newWriter()
+	w.newBuffer = func() buffer {
 		return b
 	}
-	s.flusher = f
+	w.flusher = f
 
 	ticker := make(chan time.Time)
-	s.ticker = ticker
+	w.ticker = ticker
 
-	s.start()
-	s.add([]byte{'h'})
+	w.start()
+	w.Write([]byte{'h'})
 
 	select {
 	case ticker <- time.Now():
@@ -89,7 +89,7 @@ func TestStream_PeriodicFlush(t *testing.T) {
 	}
 }
 
-func TestStream_BuffersChannelFull(t *testing.T) {
+func TestWriter_BuffersChannelFull(t *testing.T) {
 	b := &fakeBuffer{}
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),
@@ -98,27 +98,27 @@ func TestStream_BuffersChannelFull(t *testing.T) {
 		},
 	}
 
-	s := newStream()
-	s.newBuffer = func() buffer {
+	w := newWriter()
+	w.newBuffer = func() buffer {
 		return b
 	}
-	s.flusher = f
-	s.ticker = nil
+	w.flusher = f
+	w.ticker = nil
 
-	s.buffers = make(chan [][]byte)
+	w.buffers = make(chan []byte)
 
 	drop := make(chan struct{})
-	s.droppedBuffer = func(buffer) {
+	w.droppedBuffer = func(buffer) {
 		close(drop)
 	}
 
-	s.start()
+	w.start()
 	go func() {
-		s.buffers <- make([][]byte, 0)
+		w.buffers <- make([]byte, 0)
 	}()
 
-	s.add([]byte{'h'})
-	s.add([]byte{'h'})
+	w.Write([]byte{'h'})
+	w.Write([]byte{'h'})
 
 	select {
 	case <-drop:
@@ -126,3 +126,16 @@ func TestStream_BuffersChannelFull(t *testing.T) {
 		t.Fatal("Expected buffer to be dropped")
 	}
 }
+
+// func TestStream_StreamNotReady(t *testing.T) {
+// 	s := NewStream()
+// 	s.Start()
+// 	s.Write([]byte{'h'})
+
+// 	select {
+// 	case <- drop:
+// 	case <-time.After(time.Second):
+// 		t.Fatal("Expected messages to be dropped")
+// 	}
+// 	}
+// }

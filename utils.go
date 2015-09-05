@@ -15,18 +15,18 @@ var funcMap = template.FuncMap{
 	"lookUp": lookUp,
 }
 
-type missingEnvVarError struct {
+type MissingEnvVarError struct {
 	envVar string
 }
 
-func (e *missingEnvVarError) Error() string {
+func (e *MissingEnvVarError) Error() string {
 	return fmt.Sprintf("Missing required %s environment variable.\n", e.envVar)
 }
 
 func compileTmpl(envVar string) (*template.Template, error) {
 	tmplString := os.Getenv(envVar)
 	if tmplString == "" {
-		return nil, &missingEnvVarError{envVar: envVar}
+		return nil, &MissingEnvVarError{envVar: envVar}
 	}
 
 	tmpl, err := template.New("").Funcs(funcMap).Parse(tmplString)
