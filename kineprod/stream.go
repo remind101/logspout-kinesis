@@ -2,8 +2,8 @@ package kineprod
 
 import (
 	"errors"
-	"io"
 	"sync"
+	"text/template"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
@@ -17,23 +17,25 @@ type Stream struct {
 	client *kinesis.Kinesis
 	name   string
 	// tags       map[string]*string
-	writers    map[string]io.Writer
+	Writer     *writer
 	readyWrite bool
-	wMutex     *sync.Mutex
+	wMutex     sync.Mutex
 	readyTag   chan bool
-	// pKeyTmpl   *template.Template
 }
 
 // TODO: comment
-func New(name string, m *router.Message) *Stream {
+func New(name string, pKeyTmpl *template.Template) *Stream {
+	client := kinesis.New(&aws.Config{})
+	writer := newWriter(newBuffer(pKeyTmpl, name), newFlusher(client))
+
 	s := &Stream{
-		client: kinesis.New(&aws.Config{}),
+		client: client,
 		name:   name,
 		// tags:       compileTags(m),
-		writers:    make(map[string]io.Writer),
+		Writer:     writer,
 		readyWrite: false,
+		wMutex:     sync.Mutex{},
 		readyTag:   make(chan bool),
-		// pKeyTmpl:   pkeyTempl("ENV_VAR"),
 	}
 
 	return s
@@ -54,16 +56,7 @@ func (s *Stream) Write(m *router.Message) error {
 		return ErrStreamNotReady
 	}
 
-	// pKey := partitionKey(s.pKeyTmpl, m)
-	pKey := "bob"
-	if w, ok := s.writers[pKey]; ok {
-		w.Write([]byte(m.Data))
-	} else {
-		w := newWriter()
-		w.start()
-		s.writers[pKey] = w
-		w.Write([]byte(m.Data))
-	}
+	s.Writer.Write(m)
 
 	return nil
 }

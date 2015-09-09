@@ -14,18 +14,26 @@ func init() {
 type KinesisAdapter struct {
 	Streams    map[string]*kineprod.Stream
 	StreamTmpl *template.Template
+	PKeyTmpl   *template.Template
 }
 
 func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
-	streams := make(map[string]*kineprod.Stream)
-	tmpl, err := compileTmpl("KINESIS_STREAM_TEMPLATE")
+	sTmpl, err := compileTmpl("KINESIS_STREAM_TEMPLATE")
 	if err != nil {
 		return nil, err
 	}
 
+	pTmpl, err := compileTmpl("KINESIS_PARTITION_KEY_TEMPLATE")
+	if err != nil {
+		return nil, err
+	}
+
+	streams := make(map[string]*kineprod.Stream)
+
 	return &KinesisAdapter{
 		Streams:    streams,
-		StreamTmpl: tmpl,
+		StreamTmpl: sTmpl,
+		PKeyTmpl:   pTmpl,
 	}, nil
 }
 
@@ -45,8 +53,9 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 		if s, ok := a.Streams[sn]; ok {
 			logErr(s.Write(m))
 		} else {
-			s := kineprod.New(sn, m)
+			s := kineprod.New(sn, a.PKeyTmpl)
 			s.Start()
+			s.Writer.Start()
 			a.Streams[sn] = s
 		}
 	}

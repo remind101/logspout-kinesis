@@ -2,11 +2,14 @@ package kineprod
 
 import (
 	"testing"
+	"text/template"
 	"time"
+
+	"github.com/gliderlabs/logspout/router"
 )
 
-type fakeBuffer struct {
-	d []byte
+var m = &router.Message{
+	Data: "hello",
 }
 
 type fakeFlusher struct {
@@ -14,42 +17,38 @@ type fakeFlusher struct {
 	flushed   chan struct{}
 }
 
-func (f *fakeFlusher) flush([]byte) {
+func (f *fakeFlusher) flush(b buffer) error {
 	if f.flushFunc == nil {
 		close(f.flushed)
 	} else {
 		f.flushFunc()
 	}
+
+	return nil
 }
 
-func (b *fakeBuffer) data() []byte {
-	return b.d
-}
-
-func (b *fakeBuffer) add(d []byte) {
-	b.d = append(b.d, d...)
-}
-
-func (b *fakeBuffer) full() bool {
-	return len(b.d) == 2
+var limits = map[string]int{
+	"PutRecordsLimit":     2,
+	"PutRecordsSizeLimit": PutRecordsSizeLimit,
+	"RecordSizeLimit":     RecordSizeLimit,
 }
 
 func TestWriter_Flush(t *testing.T) {
-	b := &fakeBuffer{}
+	b := newBuffer(&template.Template{}, "abc")
+	b.limits = limits
+
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),
 	}
 
-	w := newWriter()
-	w.newBuffer = func() buffer {
-		return b
-	}
-	w.flusher = f
+	w := newWriter(b, f)
 	w.ticker = nil
 
-	w.start()
-	w.Write([]byte{'h'})
-	w.Write([]byte{'h'})
+	w.Start()
+
+	w.Write(m)
+	w.Write(m)
+	w.Write(m)
 
 	select {
 	case <-f.flushed:
@@ -59,22 +58,20 @@ func TestWriter_Flush(t *testing.T) {
 }
 
 func TestWriter_PeriodicFlush(t *testing.T) {
-	b := &fakeBuffer{}
+	b := newBuffer(&template.Template{}, "abc")
+	b.limits = limits
+
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),
 	}
 
-	w := newWriter()
-	w.newBuffer = func() buffer {
-		return b
-	}
-	w.flusher = f
+	w := newWriter(b, f)
 
 	ticker := make(chan time.Time)
 	w.ticker = ticker
 
-	w.start()
-	w.Write([]byte{'h'})
+	w.Start()
+	w.Write(m)
 
 	select {
 	case ticker <- time.Now():
@@ -90,7 +87,9 @@ func TestWriter_PeriodicFlush(t *testing.T) {
 }
 
 func TestWriter_BuffersChannelFull(t *testing.T) {
-	b := &fakeBuffer{}
+	b := newBuffer(&template.Template{}, "abc")
+	b.limits = limits
+
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),
 		flushFunc: func() {
@@ -98,44 +97,26 @@ func TestWriter_BuffersChannelFull(t *testing.T) {
 		},
 	}
 
-	w := newWriter()
-	w.newBuffer = func() buffer {
-		return b
-	}
-	w.flusher = f
+	w := newWriter(b, f)
 	w.ticker = nil
-
-	w.buffers = make(chan []byte)
-
-	drop := make(chan struct{})
-	w.droppedBuffer = func(buffer) {
+	w.buffers = make(chan buffer)
+	w.dropBufferFunc = func() {
 		close(drop)
 	}
 
-	w.start()
+	w.Start()
 	go func() {
-		w.buffers <- make([]byte, 0)
+		b := newBuffer(&template.Template{}, "abc")
+		w.buffers <- *b
 	}()
 
-	w.Write([]byte{'h'})
-	w.Write([]byte{'h'})
+	w.Write(m)
+	w.Write(m)
+	w.Write(m)
 
 	select {
 	case <-drop:
-	case <-time.After(time.Second):
+	case <-time.After(1 * time.Second):
 		t.Fatal("Expected buffer to be dropped")
 	}
 }
-
-// func TestStream_StreamNotReady(t *testing.T) {
-// 	s := NewStream()
-// 	s.Start()
-// 	s.Write([]byte{'h'})
-
-// 	select {
-// 	case <- drop:
-// 	case <-time.After(time.Second):
-// 		t.Fatal("Expected messages to be dropped")
-// 	}
-// 	}
-// }

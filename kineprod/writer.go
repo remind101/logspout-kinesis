@@ -1,69 +1,62 @@
 package kineprod
 
-import "time"
+import (
+	"time"
 
-type buffer interface {
-	add([]byte)
-	full() bool
-	data() []byte
-}
+	"github.com/gliderlabs/logspout/router"
+)
 
 type writer struct {
-	messages      chan []byte
-	buffers       chan []byte
-	ticker        <-chan time.Time
-	newBuffer     func() buffer
-	droppedBuffer func(buffer)
-	flusher       flusher
+	buffer         *buffer
+	flusher        Flusher
+	messages       chan *router.Message
+	buffers        chan buffer
+	dropBufferFunc func()
+	ticker         <-chan time.Time
 }
 
-// TODO: comment
-func newWriter() *writer {
+func newWriter(b *buffer, f Flusher) *writer {
 	w := &writer{
-		messages: make(chan []byte),
-		buffers:  make(chan []byte, 10),
-		ticker:   time.NewTicker(time.Second).C,
+		messages:       make(chan *router.Message),
+		buffers:        make(chan buffer, 10),
+		ticker:         time.NewTicker(time.Second).C,
+		dropBufferFunc: dropBuffer,
+		flusher:        f,
+		buffer:         b,
 	}
 
 	return w
 }
 
 // TODO: comment
-func (w *writer) start() {
+func (w *writer) Start() {
 	go w.bufferMessages()
 	go w.flushBuffers()
 }
 
-// TODO: comment
-func (w *writer) Write(d []byte) (n int, err error) {
-	w.messages <- d
-	return
+// TODO: lowercase the function
+func (w *writer) Write(m *router.Message) {
+	w.messages <- m
 }
 
 func (w *writer) bufferMessages() {
-	var b buffer
-
 	flush := func() {
 		select {
-		case w.buffers <- b.data():
+		case w.buffers <- *w.buffer:
 		default:
-			w.droppedBuffer(b)
+			w.dropBufferFunc()
 		}
-		b = nil
+		w.buffer.reset()
 	}
 
 	for {
-		if b == nil {
-			b = w.newBuffer()
-		}
-
 		select {
 		case m := <-w.messages:
-			b.add(m)
-
-			if b.full() {
+			if w.buffer.full(m) {
 				flush()
 			}
+
+			w.buffer.add(m)
 		case <-w.ticker:
 			flush()
 		}
@@ -75,3 +68,8 @@ func (w *writer) flushBuffers() {
 		w.flusher.flush(b)
 	}
 }
+
+var drop = make(chan struct{})
+
+// TODO: implement
+func dropBuffer() {}
