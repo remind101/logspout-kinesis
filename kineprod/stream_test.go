@@ -31,12 +31,29 @@ func (f *fakeClient) Status(input *kinesis.DescribeStreamInput) string {
 	return f.status
 }
 
+func (f *fakeClient) Tag(input *kinesis.AddTagsToStreamInput) (bool, error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
+	return f.tagged, nil
+}
+
+// TODO: implement
+// func TestStream_CreationDeactivated(t *testing.T) {
+
+// }
+
+// TODO: implement
+// func TestStream_TaggingDeactivated(t *testing.T) {
+
+// }
+
 func TestStream_StreamNotReady(t *testing.T) {
 	m := &router.Message{
 		Data: "hello",
 	}
 
-	s := New("abc", &template.Template{})
+	s := New("abc", nil, nil)
 	s.client = &fakeClient{
 		created: false,
 	}
@@ -49,7 +66,7 @@ func TestStream_StreamNotReady(t *testing.T) {
 }
 
 func TestStream_StreamCreationAlreadyExists(t *testing.T) {
-	s := New("abc", &template.Template{})
+	s := New("abc", nil, nil)
 	s.client = &fakeClient{
 		created: true,
 	}
@@ -63,7 +80,7 @@ func TestStream_StreamCreationAlreadyExists(t *testing.T) {
 }
 
 func TestStream_StreamCreating(t *testing.T) {
-	s := New("abc", &template.Template{})
+	s := New("abc", nil, nil)
 	fk := &fakeClient{
 		created: false,
 		status:  "CREATING",
@@ -93,13 +110,16 @@ func TestStream_StreamCreatedButNotTagged(t *testing.T) {
 		Data: "hello",
 	}
 
-	s := New("abc", &template.Template{})
+	tags := make(map[string]*string)
+	tags["name"] = aws.String("kinesis-test")
+
+	s := New("abc", &tags, nil)
 	fk := &fakeClient{
 		created: true,
 	}
 	s.client = fk
 
-	b := newBuffer(&template.Template{}, s.name)
+	b := newBuffer(nil, s.name)
 	b.limits = limits
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),

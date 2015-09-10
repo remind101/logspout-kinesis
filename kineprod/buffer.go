@@ -55,9 +55,13 @@ func (b *buffer) add(m *router.Message) error {
 	}
 
 	var pKey string
-	if pKey = executeTmpl(b.pKeyTmpl, m); pKey == "" {
-		// We default to a uuid if the template didn't match.
+	if b.pKeyTmpl == nil {
 		pKey = uuid.New()
+	} else {
+		if pKey = executeTmpl(b.pKeyTmpl, m); pKey == "" {
+			// We default to a uuid if the template didn't match.
+			pKey = uuid.New()
+		}
 	}
 
 	// Add to count
