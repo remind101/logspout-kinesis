@@ -113,13 +113,13 @@ func TestStream_StreamCreatedButNotTagged(t *testing.T) {
 	tags := make(map[string]*string)
 	tags["name"] = aws.String("kinesis-test")
 
-	s := New("abc", &tags, nil)
+	s := New("abc", &tags, tmpl)
 	fk := &fakeClient{
 		created: true,
 	}
 	s.client = fk
 
-	b := newBuffer(nil, s.name)
+	b := newBuffer(tmpl, s.name)
 	b.limits = limits
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),
