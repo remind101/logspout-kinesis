@@ -14,7 +14,7 @@ var ErrStreamNotReady = errors.New("stream is not ready")
 
 // TODO: comment
 type Stream struct {
-	client *kinesis.Kinesis
+	client Client
 	name   string
 	// tags       map[string]*string
 	Writer     *writer
@@ -25,8 +25,14 @@ type Stream struct {
 
 // TODO: comment
 func New(name string, pKeyTmpl *template.Template) *Stream {
-	client := kinesis.New(&aws.Config{})
-	writer := newWriter(newBuffer(pKeyTmpl, name), newFlusher(client))
+	client := &client{
+		kinesis: kinesis.New(&aws.Config{}),
+	}
+
+	writer := newWriter(
+		newBuffer(pKeyTmpl, name),
+		newFlusher(client.kinesis),
+	)
 
 	s := &Stream{
 		client: client,
@@ -62,22 +68,31 @@ func (s *Stream) Write(m *router.Message) error {
 }
 
 func (s *Stream) create() {
-	// resp, err := s.client.Create(s.name)
-	// if err != nil {
-	// 	// already exists
-	// 	s.readyTag <- true
-	// } else {
-	// 	for {
-	// 		// checkStatus
-	// 		if created {
-	// 			s.readyTag <- true
-	// 			break
-	// 		} else {
-	// 			// wait a bit
-	// 			time.Sleep(4 * time.Second)
-	// 		}
-	// 	}
-	// }
+	ready, err := s.client.Create(&kinesis.CreateStreamInput{
+		ShardCount: aws.Int64(1),
+		StreamName: aws.String(s.name),
+	})
+
+	if err != nil {
+		logErr(err)
+	}
+
+	if ready {
+		s.readyTag <- true
+	} else {
+		// for {
+		// 		// checkStatus
+		// 		if created {
+		// 			s.readyTag <- true
+		// 			break
+		// 		} else {
+		// 			// wait a bit
+		// 			time.Sleep(4 * time.Second)
+		// 		}
+		// 	}
+		// }
+		// }
+	}
 }
 
 func (s *Stream) tag() {

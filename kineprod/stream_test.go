@@ -3,17 +3,33 @@ package kineprod
 import (
 	"testing"
 	"text/template"
+	"time"
 
+	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/gliderlabs/logspout/router"
 )
+
+type fakeClient struct {
+	created bool
+	tagged  bool
+}
+
+func (f *fakeClient) Create(input *kinesis.CreateStreamInput) (bool, error) {
+	if f.created {
+		return true, nil
+	}
+	return false, nil
+}
 
 func TestStream_StreamNotReady(t *testing.T) {
 	m := &router.Message{
 		Data: "hello",
 	}
-	pKeyTmpl := &template.Template{}
 
-	s := New("abc", pKeyTmpl)
+	s := New("abc", &template.Template{})
+	s.client = &fakeClient{
+		created: false,
+	}
 	s.Start()
 	err := s.Write(m)
 
@@ -22,26 +38,18 @@ func TestStream_StreamNotReady(t *testing.T) {
 	}
 }
 
-// type fakeStream struct {
-// 	tagging chan bool
-// }
+func TestStream_StreamCreationAlreadyExists(t *testing.T) {
+	s := New("abc", &template.Template{})
+	s.client = &fakeClient{
+		created: true,
+	}
+	s.Start()
 
-// func (s *fakeStream) create() {
-// 	close(s.tagging)
-// }
+	select {
+	case <-s.readyTag:
+	case <-time.After(time.Second):
+		t.Fatal("Expected stream to be created, and tag() to be called")
+	}
+}
 
-// func TestStream_StreamCreationAlreadyExists(t *testing.T) {
-// 	f := &fakeStream{
-// 		tagging: make(chan bool),
-// 	}
-
-// 	f.Start()
-
-// 	select {
-// 	case <-f.tagging:
-// 	case <-time.After(time.Second):
-// 		t.Fatal("Expected tagging to be activated")
-// 	}
-// }
-
-// // func TestStream_StreamTagging(t *testing.T) {}
+// func TestStream_StreamTagging(t *testing.T) {}
