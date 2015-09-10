@@ -44,7 +44,7 @@ func TestStream_StreamNotReady(t *testing.T) {
 	err := s.Write(m)
 
 	if err == nil {
-		t.Fatalf("Expected error: %s", ErrStreamNotReady.Error())
+		t.Fatalf("Expected error: %s", err.Error())
 	}
 }
 
@@ -74,7 +74,7 @@ func TestStream_StreamCreating(t *testing.T) {
 
 	err := s.Write(m)
 	if err == nil {
-		t.Fatalf("Expected error: %s", ErrStreamNotReady.Error())
+		t.Fatalf("Expected error: %s", err.Error())
 	}
 
 	fk.mutex.Lock()
