@@ -1,6 +1,7 @@
 package kineprod
 
 import (
+	"sync"
 	"testing"
 	"text/template"
 	"time"
@@ -13,13 +14,20 @@ type fakeClient struct {
 	created bool
 	status  string
 	tagged  bool
+	mutex   sync.Mutex
 }
 
 func (f *fakeClient) Create(input *kinesis.CreateStreamInput) (bool, error) {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	return f.created, nil
 }
 
 func (f *fakeClient) Status(input *kinesis.DescribeStreamInput) string {
+	f.mutex.Lock()
+	defer f.mutex.Unlock()
+
 	return f.status
 }
 
@@ -56,10 +64,12 @@ func TestStream_StreamCreationAlreadyExists(t *testing.T) {
 
 func TestStream_StreamCreating(t *testing.T) {
 	s := New("abc", &template.Template{})
-	s.client = &fakeClient{
+	fk := &fakeClient{
 		created: false,
 		status:  "CREATING",
+		mutex:   sync.Mutex{},
 	}
+	s.client = fk
 	s.Start()
 
 	err := s.Write(m)
@@ -67,10 +77,9 @@ func TestStream_StreamCreating(t *testing.T) {
 		t.Fatalf("Expected error: %s", ErrStreamNotReady.Error())
 	}
 
-	s.client = &fakeClient{
-		created: false,
-		status:  "ACTIVE",
-	}
+	fk.mutex.Lock()
+	fk.status = "ACTIVE"
+	fk.mutex.Unlock()
 
 	select {
 	case <-s.readyTag:
@@ -85,13 +94,21 @@ func TestStream_StreamCreating(t *testing.T) {
 // 	}
 
 // 	s := New("abc", &template.Template{})
-// 	s.client = &fakeClient{
+// 	fk := &fakeClient{
 // 		created: true,
 // 	}
+// 	s.client = fk
+
 // 	s.Start()
 // 	err := s.Write(m)
-
 // 	if err == nil {
 // 		t.Fatalf("Expected error: %s", ErrStreamNotReady.Error())
+// 	}
+
+// 	fk.tagged = true
+
+// 	err = s.Write(m)
+// 	if err != nil {
+// 		t.Fatalf("Expected successful write, error: %s", ErrStreamNotReady.Error())
 // 	}
 // }
