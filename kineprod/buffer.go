@@ -27,7 +27,7 @@ type buffer struct {
 	ct       int
 	byteSize int
 	pKeyTmpl *template.Template
-	inp      *kinesis.PutRecordsInput
+	inp      kinesis.PutRecordsInput
 	limits   map[string]int
 }
 
@@ -40,7 +40,7 @@ func newBuffer(tmpl *template.Template, sn string) *buffer {
 
 	return &buffer{
 		pKeyTmpl: tmpl,
-		inp: &kinesis.PutRecordsInput{
+		inp: kinesis.PutRecordsInput{
 			StreamName: aws.String(sn),
 			Records:    make([]*kinesis.PutRecordsRequestEntry, 0),
 		},
@@ -100,7 +100,7 @@ func (b *buffer) count() int {
 	return b.ct
 }
 
-func (b *buffer) input() *kinesis.PutRecordsInput {
+func (b *buffer) input() kinesis.PutRecordsInput {
 	return b.inp
 }
 
