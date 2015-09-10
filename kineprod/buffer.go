@@ -49,7 +49,7 @@ func newBuffer(tmpl *template.Template, sn string) *buffer {
 func (b *buffer) add(m *router.Message) error {
 	dataLen := len(m.Data)
 
-	//
+	// This record is too large, we can't submit it to kinesis.
 	if dataLen > b.limits["RecordSizeLimit"] {
 		return ErrRecordTooBig
 	}
