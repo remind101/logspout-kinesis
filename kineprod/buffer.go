@@ -10,16 +10,18 @@ import (
 	"github.com/pborman/uuid"
 )
 
-// PutRecordsLimit is the maximum number of records allowed for a PutRecords request.
-var PutRecordsLimit int = 500
-
-// PutRecordsSizeLimit is the maximum allowed size per PutRecords request.
-var PutRecordsSizeLimit int = 5 * 1024 * 1024 // 5MB
-
-// RecordSizeLimit is the maximum allowed size per record.
-var RecordSizeLimit int = 1 * 1024 * 1024 // 1MB
-
 var ErrRecordTooBig = errors.New("data byte size is over the limit")
+
+var (
+	// PutRecordsLimit is the maximum number of records allowed for a PutRecords request.
+	PutRecordsLimit int = 500
+
+	// PutRecordsSizeLimit is the maximum allowed size per PutRecords request.
+	PutRecordsSizeLimit int = 5 * 1024 * 1024 // 5MB
+
+	// RecordSizeLimit is the maximum allowed size per record.
+	RecordSizeLimit int = 1 * 1024 * 1024 // 1MB
+)
 
 type buffer struct {
 	ct       int
@@ -54,14 +56,15 @@ func (b *buffer) add(m *router.Message) error {
 		return ErrRecordTooBig
 	}
 
-	var pKey string
-	if b.pKeyTmpl == nil {
+	pKey, err := executeTmpl(b.pKeyTmpl, m)
+	if err != nil {
+		panic(err)
+	}
+
+	// We default to a uuid if the template didn't match.
+	if pKey == "" {
 		pKey = uuid.New()
-	} else {
-		if pKey = executeTmpl(b.pKeyTmpl, m); pKey == "" {
-			// We default to a uuid if the template didn't match.
-			pKey = uuid.New()
-		}
+		debugLog("The partition key is an empty string, defaulting to a uuid %s\n", pKey)
 	}
 
 	// Add to count

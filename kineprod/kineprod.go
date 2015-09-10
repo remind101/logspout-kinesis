@@ -2,6 +2,7 @@ package kineprod
 
 import (
 	"bytes"
+	"errors"
 	"log"
 	"os"
 	"text/template"
@@ -9,14 +10,20 @@ import (
 	"github.com/gliderlabs/logspout/router"
 )
 
-func executeTmpl(tmpl *template.Template, m *router.Message) string {
+var ErrEmptyTmpl = errors.New("the template is empty")
+
+func executeTmpl(tmpl *template.Template, m *router.Message) (string, error) {
+	if tmpl == nil {
+		return "", ErrEmptyTmpl
+	}
+
 	var res bytes.Buffer
 	err := tmpl.Execute(&res, m)
 	if err != nil {
-		return ""
+		return "", err
 	}
 
-	return res.String()
+	return res.String(), nil
 }
 
 func logErr(err error) {

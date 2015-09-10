@@ -2,6 +2,7 @@ package kineprod
 
 import (
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/gliderlabs/logspout/router"
@@ -32,8 +33,10 @@ var limits = map[string]int{
 	"RecordSizeLimit":     RecordSizeLimit,
 }
 
+var tmpl, _ = template.New("").Parse("abc")
+
 func TestWriter_Flush(t *testing.T) {
-	b := newBuffer(nil, "abc")
+	b := newBuffer(tmpl, "abc")
 	b.limits = limits
 
 	f := &fakeFlusher{
@@ -57,7 +60,7 @@ func TestWriter_Flush(t *testing.T) {
 }
 
 func TestWriter_PeriodicFlush(t *testing.T) {
-	b := newBuffer(nil, "abc")
+	b := newBuffer(tmpl, "abc")
 	b.limits = limits
 
 	f := &fakeFlusher{
@@ -86,7 +89,7 @@ func TestWriter_PeriodicFlush(t *testing.T) {
 }
 
 func TestWriter_BuffersChannelFull(t *testing.T) {
-	b := newBuffer(nil, "abc")
+	b := newBuffer(tmpl, "abc")
 	b.limits = limits
 
 	f := &fakeFlusher{
@@ -105,7 +108,7 @@ func TestWriter_BuffersChannelFull(t *testing.T) {
 
 	w.Start()
 	go func() {
-		b := newBuffer(nil, "abc")
+		b := newBuffer(tmpl, "abc")
 		w.buffers <- *b
 	}()
 
