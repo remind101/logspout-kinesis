@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sync"
 	"text/template"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
@@ -68,7 +69,7 @@ func (s *Stream) Write(m *router.Message) error {
 }
 
 func (s *Stream) create() {
-	ready, err := s.client.Create(&kinesis.CreateStreamInput{
+	created, err := s.client.Create(&kinesis.CreateStreamInput{
 		ShardCount: aws.Int64(1),
 		StreamName: aws.String(s.name),
 	})
@@ -77,21 +78,21 @@ func (s *Stream) create() {
 		logErr(err)
 	}
 
-	if ready {
+	if created {
 		s.readyTag <- true
 	} else {
-		// for {
-		// 		// checkStatus
-		// 		if created {
-		// 			s.readyTag <- true
-		// 			break
-		// 		} else {
-		// 			// wait a bit
-		// 			time.Sleep(4 * time.Second)
-		// 		}
-		// 	}
-		// }
-		// }
+		for {
+			status := s.client.Status(&kinesis.DescribeStreamInput{
+				StreamName: aws.String(s.name),
+			})
+			if status == "ACTIVE" {
+				s.readyTag <- true
+				break
+			} else {
+				// wait a bit
+				time.Sleep(4 * time.Second)
+			}
+		}
 	}
 }
 

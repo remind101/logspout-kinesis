@@ -11,14 +11,16 @@ import (
 
 type fakeClient struct {
 	created bool
+	status  string
 	tagged  bool
 }
 
 func (f *fakeClient) Create(input *kinesis.CreateStreamInput) (bool, error) {
-	if f.created {
-		return true, nil
-	}
-	return false, nil
+	return f.created, nil
+}
+
+func (f *fakeClient) Status(input *kinesis.DescribeStreamInput) string {
+	return f.status
 }
 
 func TestStream_StreamNotReady(t *testing.T) {
@@ -51,5 +53,19 @@ func TestStream_StreamCreationAlreadyExists(t *testing.T) {
 		t.Fatal("Expected stream to be created, and tag() to be called")
 	}
 }
+
+// func TestStream_StreamCreationDoesntExist(t *testing.T) {
+// 	s := New("abc", &template.Template{})
+// 	s.client = &fakeClient{
+// 		created: false,
+// 	}
+// 	s.Start()
+
+// 	select {
+// 	case <-s.readyTag:
+// 	case <-time.After(time.Second):
+// 		t.Fatal("Expected stream to be created, and tag() to be called")
+// 	}
+// }
 
 // func TestStream_StreamTagging(t *testing.T) {}
