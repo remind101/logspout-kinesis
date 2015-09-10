@@ -88,27 +88,57 @@ func TestStream_StreamCreating(t *testing.T) {
 	}
 }
 
-// func TestStream_StreamCreatedButNotTagged(t *testing.T) {
-// 	m := &router.Message{
-// 		Data: "hello",
-// 	}
+func TestStream_StreamCreatedButNotTagged(t *testing.T) {
+	m := &router.Message{
+		Data: "hello",
+	}
 
-// 	s := New("abc", &template.Template{})
-// 	fk := &fakeClient{
-// 		created: true,
-// 	}
-// 	s.client = fk
+	s := New("abc", &template.Template{})
+	fk := &fakeClient{
+		created: true,
+	}
+	s.client = fk
 
-// 	s.Start()
-// 	err := s.Write(m)
-// 	if err == nil {
-// 		t.Fatalf("Expected error: %s", ErrStreamNotReady.Error())
-// 	}
+	b := newBuffer(&template.Template{}, s.name)
+	b.limits = limits
+	f := &fakeFlusher{
+		flushed: make(chan struct{}),
+	}
+	s.Writer = newWriter(b, f)
 
-// 	fk.tagged = true
+	s.Start()
+	s.Writer.Start()
 
-// 	err = s.Write(m)
-// 	if err != nil {
-// 		t.Fatalf("Expected successful write, error: %s", ErrStreamNotReady.Error())
-// 	}
-// }
+	err := s.Write(m)
+	if err == nil {
+		t.Fatalf("Expected error: %s", err.Error())
+	}
+
+	// fk.mutex.Lock()
+	// fk.tagged = true
+	// fk.mutex.Unlock()
+
+	timeout := make(chan bool)
+	go func() {
+		time.Sleep(1 * time.Second)
+		timeout <- true
+	}()
+
+	for {
+		err = s.Write(m)
+		if err == nil {
+			break
+		}
+
+		select {
+		case <-timeout:
+			break
+		default:
+		}
+	}
+
+	err = s.Write(m)
+	if err != nil {
+		t.Fatalf("Expected successful write, error: %s", err.Error())
+	}
+}

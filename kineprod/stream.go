@@ -2,7 +2,6 @@ package kineprod
 
 import (
 	"errors"
-	"sync"
 	"text/template"
 	"time"
 
@@ -19,8 +18,8 @@ type Stream struct {
 	name   string
 	// tags       map[string]*string
 	Writer     *writer
-	readyWrite bool
-	wMutex     sync.Mutex
+	ready      bool
+	readyWrite chan bool
 	readyTag   chan bool
 }
 
@@ -40,8 +39,8 @@ func New(name string, pKeyTmpl *template.Template) *Stream {
 		name:   name,
 		// tags:       compileTags(m),
 		Writer:     writer,
-		readyWrite: false,
-		wMutex:     sync.Mutex{},
+		ready:      false,
+		readyWrite: make(chan bool),
 		readyTag:   make(chan bool),
 	}
 
@@ -56,14 +55,17 @@ func (s *Stream) Start() {
 
 // TODO: commment
 func (s *Stream) Write(m *router.Message) error {
-	s.wMutex.Lock()
-	defer s.wMutex.Unlock()
-
-	if !s.readyWrite {
-		return ErrStreamNotReady
+	if s.ready {
+		s.Writer.Write(m)
+		return nil
 	}
 
-	s.Writer.Write(m)
+	select {
+	case <-s.readyWrite:
+		s.ready = true
+	default:
+		return ErrStreamNotReady
+	}
 
 	return nil
 }
@@ -98,16 +100,14 @@ func (s *Stream) create() {
 
 func (s *Stream) tag() {
 	// wait to be created...
-	// <-s.readyTag
+	<-s.readyTag
 
 	// _, err := s.Client.Tag(s.Tags)
 	// if err != nil {
 	// 	logErr(err)
 	// }
 
-	// s.wMutex.lock()
-	// s.readyWrite = true
-	// s.wMutex.Unlock()
+	s.readyWrite <- true
 }
 
 // func compileTags(m) *tags {
