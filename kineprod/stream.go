@@ -14,9 +14,9 @@ var ErrStreamNotReady = errors.New("stream is not ready")
 
 // TODO: comment
 type Stream struct {
-	client Client
-	name   string
-	// tags       map[string]*string
+	client     Client
+	name       string
+	tags       *map[string]*string
 	Writer     *writer
 	ready      bool
 	readyWrite chan bool
@@ -24,7 +24,7 @@ type Stream struct {
 }
 
 // TODO: comment
-func New(name string, pKeyTmpl *template.Template) *Stream {
+func New(name string, tags *map[string]*string, pKeyTmpl *template.Template) *Stream {
 	client := &client{
 		kinesis: kinesis.New(&aws.Config{}),
 	}
@@ -35,9 +35,9 @@ func New(name string, pKeyTmpl *template.Template) *Stream {
 	)
 
 	s := &Stream{
-		client: client,
-		name:   name,
-		// tags:       compileTags(m),
+		client:     client,
+		name:       name,
+		tags:       tags,
 		Writer:     writer,
 		ready:      false,
 		readyWrite: make(chan bool),
@@ -102,14 +102,13 @@ func (s *Stream) tag() {
 	// wait to be created...
 	<-s.readyTag
 
-	// _, err := s.Client.Tag(s.Tags)
-	// if err != nil {
-	// 	logErr(err)
-	// }
+	tagged, err := s.client.Tag(&kinesis.AddTagsToStreamInput{
+		StreamName: aws.String(s.name),
+		Tags:       *s.tags,
+	})
+	if !tagged {
+		panic(err)
+	}
 
 	s.readyWrite <- true
 }
-
-// func compileTags(m) *tags {
-
-// }

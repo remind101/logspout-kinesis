@@ -3,9 +3,9 @@ package kineprod
 import (
 	"sync"
 	"testing"
-	"text/template"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/gliderlabs/logspout/router"
 )
@@ -134,9 +134,9 @@ func TestStream_StreamCreatedButNotTagged(t *testing.T) {
 		t.Fatalf("Expected error: %s", err.Error())
 	}
 
-	// fk.mutex.Lock()
-	// fk.tagged = true
-	// fk.mutex.Unlock()
+	fk.mutex.Lock()
+	fk.tagged = true
+	fk.mutex.Unlock()
 
 	timeout := make(chan bool)
 	go func() {
