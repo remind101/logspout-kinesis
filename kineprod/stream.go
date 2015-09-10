@@ -97,8 +97,9 @@ func (s *Stream) create() {
 }
 
 func (s *Stream) tag() {
-	// // wait to be created...
+	// wait to be created...
 	// <-s.readyTag
+
 	// _, err := s.Client.Tag(s.Tags)
 	// if err != nil {
 	// 	logErr(err)

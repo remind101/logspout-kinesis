@@ -54,18 +54,44 @@ func TestStream_StreamCreationAlreadyExists(t *testing.T) {
 	}
 }
 
-// func TestStream_StreamCreationDoesntExist(t *testing.T) {
+func TestStream_StreamCreating(t *testing.T) {
+	s := New("abc", &template.Template{})
+	s.client = &fakeClient{
+		created: false,
+		status:  "CREATING",
+	}
+	s.Start()
+
+	err := s.Write(m)
+	if err == nil {
+		t.Fatalf("Expected error: %s", ErrStreamNotReady.Error())
+	}
+
+	s.client = &fakeClient{
+		created: false,
+		status:  "ACTIVE",
+	}
+
+	select {
+	case <-s.readyTag:
+	case <-time.After(time.Second):
+		t.Fatal("Expected stream to be active, and tag() to be called")
+	}
+}
+
+// func TestStream_StreamCreatedButNotTagged(t *testing.T) {
+// 	m := &router.Message{
+// 		Data: "hello",
+// 	}
+
 // 	s := New("abc", &template.Template{})
 // 	s.client = &fakeClient{
-// 		created: false,
+// 		created: true,
 // 	}
 // 	s.Start()
+// 	err := s.Write(m)
 
-// 	select {
-// 	case <-s.readyTag:
-// 	case <-time.After(time.Second):
-// 		t.Fatal("Expected stream to be created, and tag() to be called")
+// 	if err == nil {
+// 		t.Fatalf("Expected error: %s", ErrStreamNotReady.Error())
 // 	}
 // }
-
-// func TestStream_StreamTagging(t *testing.T) {}
