@@ -102,7 +102,8 @@ func TestWriter_BuffersChannelFull(t *testing.T) {
 	w := newWriter(b, f)
 	w.ticker = nil
 	w.buffers = make(chan buffer)
-	w.dropBufferFunc = func() {
+	drop := make(chan struct{})
+	w.dropBufferFunc = func(b buffer) {
 		close(drop)
 	}
 

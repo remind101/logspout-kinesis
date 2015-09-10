@@ -11,7 +11,7 @@ type writer struct {
 	flusher        Flusher
 	messages       chan *router.Message
 	buffers        chan buffer
-	dropBufferFunc func()
+	dropBufferFunc func(buffer)
 	ticker         <-chan time.Time
 }
 
@@ -44,7 +44,7 @@ func (w *writer) bufferMessages() {
 		select {
 		case w.buffers <- *w.buffer:
 		default:
-			w.dropBufferFunc()
+			w.dropBufferFunc(*w.buffer)
 		}
 		w.buffer.reset()
 	}
@@ -67,12 +67,11 @@ func (w *writer) flushBuffers() {
 	for b := range w.buffers {
 		err := w.flusher.flush(b)
 		if err != nil {
-			debugLog(err.Error())
+			debugLog("%s\n", err.Error())
 		}
 	}
 }
 
-var drop = make(chan struct{})
-
-// TODO: implement
-func dropBuffer() {}
+func dropBuffer(b buffer) {
+	debugLog("buffer dropped! items: %d, byteSize: %d\n", b.count(), b.byteSize)
+}
