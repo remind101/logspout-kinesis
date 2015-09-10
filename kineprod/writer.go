@@ -65,7 +65,10 @@ func (w *writer) bufferMessages() {
 
 func (w *writer) flushBuffers() {
 	for b := range w.buffers {
-		w.flusher.flush(b)
+		err := w.flusher.flush(b)
+		if err != nil {
+			debugLog(err.Error())
+		}
 	}
 }
 
