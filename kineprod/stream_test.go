@@ -38,12 +38,12 @@ func (f *fakeClient) Tag(input *kinesis.AddTagsToStreamInput) (bool, error) {
 	return f.tagged, nil
 }
 
-// TODO: implement
+// TODO: implement optional stream creation
 // func TestStream_CreationDeactivated(t *testing.T) {
 
 // }
 
-// TODO: implement
+// TODO: implement optional stream tagging
 // func TestStream_TaggingDeactivated(t *testing.T) {
 
 // }
