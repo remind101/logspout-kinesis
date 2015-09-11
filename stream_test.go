@@ -1,4 +1,4 @@
-package kineprod
+package kinesis
 
 import (
 	"sync"
@@ -53,7 +53,7 @@ func TestStream_StreamNotReady(t *testing.T) {
 		Data: "hello",
 	}
 
-	s := New("abc", nil, nil)
+	s := NewStream("abc", nil, nil)
 	s.client = &fakeClient{
 		created: false,
 	}
@@ -66,7 +66,7 @@ func TestStream_StreamNotReady(t *testing.T) {
 }
 
 func TestStream_StreamCreationAlreadyExists(t *testing.T) {
-	s := New("abc", nil, nil)
+	s := NewStream("abc", nil, nil)
 	s.client = &fakeClient{
 		created: true,
 	}
@@ -80,7 +80,7 @@ func TestStream_StreamCreationAlreadyExists(t *testing.T) {
 }
 
 func TestStream_StreamCreating(t *testing.T) {
-	s := New("abc", nil, nil)
+	s := NewStream("abc", nil, nil)
 	fk := &fakeClient{
 		created: false,
 		status:  "CREATING",
@@ -113,7 +113,7 @@ func TestStream_StreamCreatedButNotTagged(t *testing.T) {
 	tags := make(map[string]*string)
 	tags["name"] = aws.String("kinesis-test")
 
-	s := New("abc", &tags, tmpl)
+	s := NewStream("abc", &tags, tmpl)
 	fk := &fakeClient{
 		created: true,
 	}

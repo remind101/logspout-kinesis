@@ -2,7 +2,9 @@ package kinesis
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"text/template"
@@ -36,7 +38,13 @@ func compileTmpl(envVar string) (*template.Template, error) {
 	return tmpl, nil
 }
 
+var ErrEmptyTmpl = errors.New("the template is empty")
+
 func executeTmpl(tmpl *template.Template, m *router.Message) (string, error) {
+	if tmpl == nil {
+		return "", ErrEmptyTmpl
+	}
+
 	var res bytes.Buffer
 	err := tmpl.Execute(&res, m)
 	if err != nil {
@@ -56,4 +64,16 @@ func lookUp(arr []string, key string) string {
 		}
 	}
 	return ""
+}
+
+func logErr(err error) {
+	if err != nil {
+		log.Println("kinesis:", err.Error())
+	}
+}
+
+func debug(format string, p ...interface{}) {
+	if os.Getenv("KINESIS_DEBUG") == "true" {
+		log.Printf("kinesis: "+format, p...)
+	}
 }

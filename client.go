@@ -1,4 +1,4 @@
-package kineprod
+package kinesis
 
 import (
 	"github.com/aws/aws-sdk-go/aws/awserr"

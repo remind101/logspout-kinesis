@@ -1,4 +1,4 @@
-package kineprod
+package kinesis
 
 import (
 	"errors"

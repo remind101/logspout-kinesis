@@ -1,4 +1,4 @@
-package kineprod
+package kinesis
 
 import (
 	"fmt"
@@ -30,8 +30,8 @@ type Stream struct {
 	readyTag   chan bool
 }
 
-// New instantiates a new stream.
-func New(name string, tags *map[string]*string, pKeyTmpl *template.Template) *Stream {
+// NewStream instantiates a new stream.
+func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Template) *Stream {
 	client := &client{
 		kinesis: kinesis.New(&aws.Config{}),
 	}

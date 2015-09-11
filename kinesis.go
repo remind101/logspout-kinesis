@@ -2,13 +2,11 @@ package kinesis
 
 import (
 	"errors"
-	"log"
 	"os"
 	"text/template"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/gliderlabs/logspout/router"
-	"github.com/remind101/logspout-kinesis/kineprod"
 )
 
 func init() {
@@ -21,7 +19,7 @@ var (
 )
 
 type KinesisAdapter struct {
-	Streams    map[string]*kineprod.Stream
+	Streams    map[string]*Stream
 	StreamTmpl *template.Template
 	TagTmpl    *template.Template
 	PKeyTmpl   *template.Template
@@ -43,7 +41,7 @@ func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
 		return nil, err
 	}
 
-	streams := make(map[string]*kineprod.Stream)
+	streams := make(map[string]*Stream)
 
 	return &KinesisAdapter{
 		Streams:    streams,
@@ -75,7 +73,7 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 				break
 			}
 
-			s := kineprod.New(sn, tags, a.PKeyTmpl)
+			s := NewStream(sn, tags, a.PKeyTmpl)
 			s.Start()
 			s.Writer.Start()
 			a.Streams[sn] = s
@@ -101,16 +99,4 @@ func tags(tmpl *template.Template, m *router.Message) (*map[string]*string, erro
 	return &map[string]*string{
 		tagKey: aws.String(tagValue),
 	}, nil
-}
-
-func logErr(err error) {
-	if err != nil {
-		log.Println("kinesis:", err.Error())
-	}
-}
-
-func debug(format string, p ...interface{}) {
-	if os.Getenv("KINESIS_DEBUG") == "true" {
-		log.Printf("kinesis: "+format, p...)
-	}
 }
