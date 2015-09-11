@@ -2,6 +2,7 @@ package kinesis
 
 import (
 	"errors"
+	"log"
 	"os"
 	"text/template"
 
@@ -100,4 +101,16 @@ func tags(tmpl *template.Template, m *router.Message) (*map[string]*string, erro
 	return &map[string]*string{
 		tagKey: aws.String(tagValue),
 	}, nil
+}
+
+func logErr(err error) {
+	if err != nil {
+		log.Println("kinesis: ", err.Error())
+	}
+}
+
+func debug(format string, p ...interface{}) {
+	if os.Getenv("KINESIS_DEBUG") == "true" {
+		log.Printf("kinesis: "+format, p...)
+	}
 }
