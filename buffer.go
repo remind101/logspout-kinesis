@@ -12,15 +12,21 @@ import (
 
 var ErrRecordTooBig = errors.New("data byte size is over the limit")
 
-var (
+type limits struct {
 	// PutRecordsLimit is the maximum number of records allowed for a PutRecords request.
-	PutRecordsLimit int = 500
+	putRecords int
 
 	// PutRecordsSizeLimit is the maximum allowed size per PutRecords request.
-	PutRecordsSizeLimit int = 5 * 1024 * 1024 // 5MB
+	putRecordsSize int
 
 	// RecordSizeLimit is the maximum allowed size per record.
-	RecordSizeLimit int = 1 * 1024 * 1024 // 1MB
+	recordSize int
+}
+
+const (
+	PutRecordsLimit     int = 500
+	PutRecordsSizeLimit int = 5 * 1024 * 1024 // 5MB
+	RecordSizeLimit     int = 1 * 1024 * 1024 // 1MB
 )
 
 type buffer struct {
@@ -28,23 +34,21 @@ type buffer struct {
 	byteSize int
 	pKeyTmpl *template.Template
 	input    kinesis.PutRecordsInput
-	limits   map[string]int
+	limits   *limits
 }
 
 func newBuffer(tmpl *template.Template, sn string) *buffer {
-	limits := map[string]int{
-		"PutRecordsLimit":     PutRecordsLimit,
-		"PutRecordsSizeLimit": PutRecordsSizeLimit,
-		"RecordSizeLimit":     RecordSizeLimit,
-	}
-
 	return &buffer{
 		pKeyTmpl: tmpl,
 		input: kinesis.PutRecordsInput{
 			StreamName: aws.String(sn),
 			Records:    make([]*kinesis.PutRecordsRequestEntry, 0),
 		},
-		limits: limits,
+		limits: &limits{
+			putRecords:     PutRecordsLimit,
+			putRecordsSize: PutRecordsSizeLimit,
+			recordSize:     RecordSizeLimit,
+		},
 	}
 }
 
@@ -52,7 +56,7 @@ func (b *buffer) add(m *router.Message) error {
 	dataLen := len(m.Data)
 
 	// This record is too large, we can't submit it to kinesis.
-	if dataLen > b.limits["RecordSizeLimit"] {
+	if dataLen > b.limits.recordSize {
 		return ErrRecordTooBig
 	}
 
@@ -87,12 +91,12 @@ func (b *buffer) add(m *router.Message) error {
 
 func (b *buffer) full(m *router.Message) bool {
 	// Adding this event would make our request have too many records.
-	if b.count+1 > b.limits["PutRecordsLimit"] {
+	if b.count+1 > b.limits.putRecords {
 		return true
 	}
 
 	// Adding this event would make our request too large.
-	if b.byteSize+len(m.Data) > b.limits["PutRecordsSizeLimit"] {
+	if b.byteSize+len(m.Data) > b.limits.putRecordsSize {
 		return true
 	}
 

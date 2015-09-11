@@ -27,17 +27,17 @@ func (f *fakeFlusher) flush(b buffer) error {
 	return nil
 }
 
-var limits = map[string]int{
-	"PutRecordsLimit":     2,
-	"PutRecordsSizeLimit": PutRecordsSizeLimit,
-	"RecordSizeLimit":     RecordSizeLimit,
+var testLimits = limits{
+	putRecords:     2,
+	putRecordsSize: PutRecordsSizeLimit,
+	recordSize:     RecordSizeLimit,
 }
 
 var tmpl, _ = template.New("").Parse("abc")
 
 func TestWriter_Flush(t *testing.T) {
 	b := newBuffer(tmpl, "abc")
-	b.limits = limits
+	b.limits = &testLimits
 
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),
@@ -61,7 +61,7 @@ func TestWriter_Flush(t *testing.T) {
 
 func TestWriter_PeriodicFlush(t *testing.T) {
 	b := newBuffer(tmpl, "abc")
-	b.limits = limits
+	b.limits = &testLimits
 
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),
@@ -90,7 +90,7 @@ func TestWriter_PeriodicFlush(t *testing.T) {
 
 func TestWriter_BuffersChannelFull(t *testing.T) {
 	b := newBuffer(tmpl, "abc")
-	b.limits = limits
+	b.limits = &testLimits
 
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),

@@ -120,7 +120,7 @@ func TestStream_StreamCreatedButNotTagged(t *testing.T) {
 	s.client = fk
 
 	b := newBuffer(tmpl, s.name)
-	b.limits = limits
+	b.limits = &testLimits
 	f := &fakeFlusher{
 		flushed: make(chan struct{}),
 	}
