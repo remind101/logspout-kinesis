@@ -61,7 +61,7 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 		}
 
 		if sn == "" {
-			debugLog("the stream name is empty, couldn't match the template. Skipping the log.\n")
+			debug("the stream name is empty, couldn't match the template. Skipping the log.")
 			continue
 		}
 

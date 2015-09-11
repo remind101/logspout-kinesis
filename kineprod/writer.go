@@ -67,11 +67,15 @@ func (w *writer) flushBuffers() {
 	for b := range w.buffers {
 		err := w.flusher.flush(b)
 		if err != nil {
-			debugLog("%s\n", err.Error())
+			if empErr, ok := err.(*ErrEmptyBuffer); ok {
+				debug("%s\n", empErr.Error())
+			} else {
+				logErr(err)
+			}
 		}
 	}
 }
 
 func dropBuffer(b buffer) {
-	debugLog("buffer dropped! items: %d, byteSize: %d\n", b.count, b.byteSize)
+	debug("buffer dropped! items: %d, byteSize: %d\n", b.count, b.byteSize)
 }

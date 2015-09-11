@@ -64,7 +64,7 @@ func (b *buffer) add(m *router.Message) error {
 	// We default to a uuid if the template didn't match.
 	if pKey == "" {
 		pKey = uuid.New()
-		debugLog("The partition key is an empty string, defaulting to a uuid %s\n", pKey)
+		debug("the partition key is an empty string, defaulting to a uuid %s", pKey)
 	}
 
 	// Add to count
@@ -78,6 +78,9 @@ func (b *buffer) add(m *router.Message) error {
 		Data:         []byte(m.Data),
 		PartitionKey: aws.String(pKey),
 	})
+
+	debug("record added, stream name: %s, partition key: %s, length: %d",
+		*b.input.StreamName, pKey, len(b.input.Records))
 
 	return nil
 }
@@ -100,4 +103,6 @@ func (b *buffer) reset() {
 	b.count = 0
 	b.byteSize = 0
 	b.input.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
+
+	debug("buffer reset, stream name: %s", *b.input.StreamName)
 }

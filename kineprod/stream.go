@@ -83,6 +83,7 @@ func (s *Stream) create() {
 	if created {
 		s.readyTag <- true
 	} else {
+		debug("need to create stream for %s", s.name)
 		for {
 			status := s.client.Status(&kinesis.DescribeStreamInput{
 				StreamName: aws.String(s.name),
@@ -94,6 +95,7 @@ func (s *Stream) create() {
 				// wait a bit
 				time.Sleep(4 * time.Second)
 			}
+			debug("status for stream %s: %s", s.name, status)
 		}
 	}
 }
