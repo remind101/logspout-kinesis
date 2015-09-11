@@ -19,7 +19,7 @@ func (e *ErrStreamNotReady) Error() string {
 	return fmt.Sprintf("not ready, stream: %s", e.s)
 }
 
-// TODO: comment
+// Stream represents a stream that will send messages to its writer.
 type Stream struct {
 	client     Client
 	name       string
@@ -30,7 +30,7 @@ type Stream struct {
 	readyTag   chan bool
 }
 
-// TODO: comment
+// New instantiates a new stream.
 func New(name string, tags *map[string]*string, pKeyTmpl *template.Template) *Stream {
 	client := &client{
 		kinesis: kinesis.New(&aws.Config{}),
@@ -54,16 +54,18 @@ func New(name string, tags *map[string]*string, pKeyTmpl *template.Template) *St
 	return s
 }
 
-// TODO: commment
+// Start runs the goroutines making calls to create and tag the stream on
+// AWS.
 func (s *Stream) Start() {
 	go s.create()
 	go s.tag()
 }
 
-// TODO: commment
+// Write sends the message to the writer if the stream is ready
+// i.e created and tagged.
 func (s *Stream) Write(m *router.Message) error {
 	if s.ready {
-		s.Writer.Write(m)
+		s.Writer.write(m)
 		return nil
 	}
 

@@ -28,14 +28,13 @@ func newWriter(b *buffer, f Flusher) *writer {
 	return w
 }
 
-// TODO: comment
+// Start starts the goroutines consuming, dropping and flushing messages.
 func (w *writer) Start() {
 	go w.bufferMessages()
 	go w.flushBuffers()
 }
 
-// TODO: lowercase the function
-func (w *writer) Write(m *router.Message) {
+func (w *writer) write(m *router.Message) {
 	w.messages <- m
 }
 

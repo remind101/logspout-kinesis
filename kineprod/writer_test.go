@@ -48,9 +48,9 @@ func TestWriter_Flush(t *testing.T) {
 
 	w.Start()
 
-	w.Write(m)
-	w.Write(m)
-	w.Write(m)
+	w.write(m)
+	w.write(m)
+	w.write(m)
 
 	select {
 	case <-f.flushed:
@@ -73,7 +73,7 @@ func TestWriter_PeriodicFlush(t *testing.T) {
 	w.ticker = ticker
 
 	w.Start()
-	w.Write(m)
+	w.write(m)
 
 	select {
 	case ticker <- time.Now():
@@ -113,9 +113,9 @@ func TestWriter_BuffersChannelFull(t *testing.T) {
 		w.buffers <- *b
 	}()
 
-	w.Write(m)
-	w.Write(m)
-	w.Write(m)
+	w.write(m)
+	w.write(m)
+	w.write(m)
 
 	select {
 	case <-drop:
