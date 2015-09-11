@@ -2,6 +2,7 @@ package kineprod
 
 import (
 	"errors"
+	"log"
 	"text/template"
 	"time"
 
@@ -63,6 +64,7 @@ func (s *Stream) Write(m *router.Message) error {
 	select {
 	case <-s.readyWrite:
 		s.ready = true
+		log.Printf("stream %s is ready!", s.name)
 	default:
 		return ErrStreamNotReady
 	}
