@@ -1,4 +1,4 @@
-# logspout-kinesis
+# logspout-kinesis [![Circle CI](https://circleci.com/gh/remind101/logspout-kinesis.svg?style=svg)](https://circleci.com/gh/remind101/logspout-kinesis)
 
 A [Logspout](https://github.com/gliderlabs/logspout) adapter for writing Docker container logs to [Amazon Kinesis](http://aws.amazon.com/kinesis/).
 
