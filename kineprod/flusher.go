@@ -23,11 +23,11 @@ func newFlusher(client *kinesis.Kinesis) Flusher {
 }
 
 func (f flusher) flush(b buffer) error {
-	if b.count() == 0 {
+	if b.ct == 0 {
 		return ErrEmptyBuffer
 	}
 
-	_, err := f.client.PutRecords(b.input())
+	_, err := f.client.PutRecords(&b.inp)
 	if err != nil {
 		return err
 	}

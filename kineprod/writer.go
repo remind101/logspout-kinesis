@@ -73,5 +73,5 @@ func (w *writer) flushBuffers() {
 }
 
 func dropBuffer(b buffer) {
-	debugLog("buffer dropped! items: %d, byteSize: %d\n", b.count(), b.byteSize)
+	debugLog("buffer dropped! items: %d, byteSize: %d\n", b.ct, b.byteSize)
 }

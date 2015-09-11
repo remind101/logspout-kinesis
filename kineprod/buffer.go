@@ -96,14 +96,6 @@ func (b *buffer) full(m *router.Message) bool {
 	return false
 }
 
-func (b *buffer) count() int {
-	return b.ct
-}
-
-func (b *buffer) input() kinesis.PutRecordsInput {
-	return b.inp
-}
-
 func (b *buffer) reset() {
 	b.ct = 0
 	b.byteSize = 0
