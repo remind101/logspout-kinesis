@@ -24,10 +24,10 @@ var (
 )
 
 type buffer struct {
-	ct       int
+	count    int
 	byteSize int
 	pKeyTmpl *template.Template
-	inp      kinesis.PutRecordsInput
+	input    kinesis.PutRecordsInput
 	limits   map[string]int
 }
 
@@ -40,7 +40,7 @@ func newBuffer(tmpl *template.Template, sn string) *buffer {
 
 	return &buffer{
 		pKeyTmpl: tmpl,
-		inp: kinesis.PutRecordsInput{
+		input: kinesis.PutRecordsInput{
 			StreamName: aws.String(sn),
 			Records:    make([]*kinesis.PutRecordsRequestEntry, 0),
 		},
@@ -68,13 +68,13 @@ func (b *buffer) add(m *router.Message) error {
 	}
 
 	// Add to count
-	b.ct += 1
+	b.count += 1
 
 	// Add data and partition key size to byteSize
 	b.byteSize += dataLen + len(pKey)
 
 	// Add record
-	b.inp.Records = append(b.inp.Records, &kinesis.PutRecordsRequestEntry{
+	b.input.Records = append(b.input.Records, &kinesis.PutRecordsRequestEntry{
 		Data:         []byte(m.Data),
 		PartitionKey: aws.String(pKey),
 	})
@@ -84,7 +84,7 @@ func (b *buffer) add(m *router.Message) error {
 
 func (b *buffer) full(m *router.Message) bool {
 	// Adding this event would make our request have too many records.
-	if b.ct+1 > b.limits["PutRecordsLimit"] {
+	if b.count+1 > b.limits["PutRecordsLimit"] {
 		return true
 	}
 
@@ -97,7 +97,7 @@ func (b *buffer) full(m *router.Message) bool {
 }
 
 func (b *buffer) reset() {
-	b.ct = 0
+	b.count = 0
 	b.byteSize = 0
-	b.inp.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
+	b.input.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
 }
