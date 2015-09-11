@@ -28,7 +28,7 @@ func executeTmpl(tmpl *template.Template, m *router.Message) (string, error) {
 
 func logErr(err error) {
 	if err != nil {
-		log.Println("kinesis: ", err.Error())
+		log.Println("kinesis:", err.Error())
 	}
 }
 

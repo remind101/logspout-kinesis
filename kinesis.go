@@ -105,7 +105,7 @@ func tags(tmpl *template.Template, m *router.Message) (*map[string]*string, erro
 
 func logErr(err error) {
 	if err != nil {
-		log.Println("kinesis: ", err.Error())
+		log.Println("kinesis:", err.Error())
 	}
 }
 

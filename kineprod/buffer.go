@@ -79,7 +79,7 @@ func (b *buffer) add(m *router.Message) error {
 		PartitionKey: aws.String(pKey),
 	})
 
-	debug("record added, stream name: %s, partition key: %s, length: %d",
+	debug("record added, stream: %s, partition key: %s, length: %d",
 		*b.input.StreamName, pKey, len(b.input.Records))
 
 	return nil
@@ -104,5 +104,5 @@ func (b *buffer) reset() {
 	b.byteSize = 0
 	b.input.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
 
-	debug("buffer reset, stream name: %s", *b.input.StreamName)
+	debug("buffer reset, stream: %s", *b.input.StreamName)
 }

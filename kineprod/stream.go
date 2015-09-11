@@ -1,7 +1,7 @@
 package kineprod
 
 import (
-	"errors"
+	"fmt"
 	"log"
 	"text/template"
 	"time"
@@ -11,7 +11,13 @@ import (
 	"github.com/gliderlabs/logspout/router"
 )
 
-var ErrStreamNotReady = errors.New("stream is not ready")
+type ErrStreamNotReady struct {
+	s string
+}
+
+func (e *ErrStreamNotReady) Error() string {
+	return fmt.Sprintf("not ready, stream: %s", e.s)
+}
 
 // TODO: comment
 type Stream struct {
@@ -64,9 +70,9 @@ func (s *Stream) Write(m *router.Message) error {
 	select {
 	case <-s.readyWrite:
 		s.ready = true
-		log.Printf("stream %s is ready!", s.name)
+		log.Printf("ready! stream: %s", s.name)
 	default:
-		return ErrStreamNotReady
+		return &ErrStreamNotReady{s: s.name}
 	}
 
 	return nil
@@ -85,7 +91,7 @@ func (s *Stream) create() {
 	if created {
 		s.readyTag <- true
 	} else {
-		debug("need to create stream for %s", s.name)
+		debug("need to create stream: %s", s.name)
 		for {
 			status := s.client.Status(&kinesis.DescribeStreamInput{
 				StreamName: aws.String(s.name),
@@ -97,7 +103,7 @@ func (s *Stream) create() {
 				// wait a bit
 				time.Sleep(4 * time.Second)
 			}
-			debug("status for stream %s: %s", s.name, status)
+			debug("stream %s status: %s", s.name, status)
 		}
 	}
 }

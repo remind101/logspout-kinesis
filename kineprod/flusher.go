@@ -6,10 +6,12 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 )
 
-type ErrEmptyBuffer struct{}
+type ErrEmptyBuffer struct {
+	s string
+}
 
 func (e *ErrEmptyBuffer) Error() string {
-	return fmt.Sprintf("buffer is empty")
+	return fmt.Sprintf("buffer is empty, stream: %s", e.s)
 }
 
 type Flusher interface {
@@ -28,7 +30,9 @@ func newFlusher(client *kinesis.Kinesis) Flusher {
 
 func (f flusher) flush(b buffer) error {
 	if b.count == 0 {
-		return &ErrEmptyBuffer{}
+		return &ErrEmptyBuffer{
+			s: *b.input.StreamName,
+		}
 	}
 
 	_, err := f.client.PutRecords(&b.input)
@@ -36,7 +40,7 @@ func (f flusher) flush(b buffer) error {
 		return err
 	}
 
-	debug("buffer flushed, stream name: %s, length: %d",
+	debug("buffer flushed, stream: %s, length: %d",
 		*b.input.StreamName, len(b.input.Records))
 
 	return nil

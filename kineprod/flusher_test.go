@@ -13,6 +13,6 @@ func TestFlusher_EmptyBuffer(t *testing.T) {
 
 	err := w.flusher.flush(*b)
 	if assert.Error(t, err, "An empty buffer error was expected.") {
-		assert.Equal(t, err, &ErrEmptyBuffer{})
+		assert.Equal(t, err, &ErrEmptyBuffer{s: "abc"})
 	}
 }
