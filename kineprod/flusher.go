@@ -37,7 +37,7 @@ func (f flusher) flush(b buffer) error {
 	}
 
 	debug("buffer flushed, stream name: %s, length: %d",
-		b.input.StreamName, len(b.input.Records))
+		*b.input.StreamName, len(b.input.Records))
 
 	return nil
 }
