@@ -24,7 +24,7 @@ type Stream struct {
 	client     Client
 	name       string
 	tags       *map[string]*string
-	Writer     *writer
+	writer     *writer
 	ready      bool
 	readyWrite chan bool
 	err        error
@@ -46,7 +46,7 @@ func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Templat
 		client:     client,
 		name:       name,
 		tags:       tags,
-		Writer:     writer,
+		writer:     writer,
 		readyWrite: make(chan bool),
 		errChan:    make(chan error),
 	}
@@ -58,6 +58,7 @@ func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Templat
 // AWS.
 func (s *Stream) Start() {
 	go s.start()
+	go s.writer.start()
 }
 
 func (s *Stream) start() {
@@ -90,7 +91,7 @@ func (s *Stream) Write(m *router.Message) error {
 	case s.err != nil:
 		return s.err
 	case s.ready:
-		s.Writer.write(m)
+		s.writer.write(m)
 		return nil
 	default:
 		return &ErrStreamNotReady{s: s.name}

@@ -112,7 +112,6 @@ func TestStream_WriteStreamBecomesReady(t *testing.T) {
 	}
 	s.client = fk
 	s.Start()
-	s.Writer.Start()
 
 	err := s.Write(m)
 	if assert.Error(t, err, "A stream not ready error was expected") {

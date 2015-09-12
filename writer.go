@@ -28,8 +28,7 @@ func newWriter(b *buffer, f Flusher) *writer {
 	return w
 }
 
-// Start starts the goroutines consuming, dropping and flushing messages.
-func (w *writer) Start() {
+func (w *writer) start() {
 	go w.bufferMessages()
 	go w.flushBuffers()
 }

@@ -46,7 +46,7 @@ func TestWriter_Flush(t *testing.T) {
 	w := newWriter(b, f)
 	w.ticker = nil
 
-	w.Start()
+	w.start()
 
 	w.write(m)
 	w.write(m)
@@ -72,7 +72,7 @@ func TestWriter_PeriodicFlush(t *testing.T) {
 	ticker := make(chan time.Time)
 	w.ticker = ticker
 
-	w.Start()
+	w.start()
 	w.write(m)
 
 	select {
@@ -107,7 +107,8 @@ func TestWriter_BuffersChannelFull(t *testing.T) {
 		close(drop)
 	}
 
-	w.Start()
+	w.start()
+
 	go func() {
 		b := newBuffer(tmpl, "abc")
 		w.buffers <- *b

@@ -77,7 +77,6 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 
 			s := NewStream(sn, tags, a.PKeyTmpl)
 			s.Start()
-			s.Writer.Start()
 			a.Streams[sn] = s
 		}
 	}
