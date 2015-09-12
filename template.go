@@ -16,17 +16,17 @@ var funcMap = template.FuncMap{
 }
 
 type MissingEnvVarError struct {
-	envVar string
+	EnvVar string
 }
 
 func (e *MissingEnvVarError) Error() string {
-	return fmt.Sprintf("Missing required %s environment variable.\n", e.envVar)
+	return fmt.Sprintf("missing required %s environment variable", e.EnvVar)
 }
 
 func compileTmpl(envVar string) (*template.Template, error) {
 	tmplString := os.Getenv(envVar)
 	if tmplString == "" {
-		return nil, &MissingEnvVarError{envVar: envVar}
+		return nil, &MissingEnvVarError{EnvVar: envVar}
 	}
 
 	tmpl, err := template.New("").Funcs(funcMap).Parse(tmplString)

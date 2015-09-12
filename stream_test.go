@@ -96,7 +96,7 @@ func TestStream_WriteStreamNotReady(t *testing.T) {
 	err := s.Write(m)
 
 	if assert.Error(t, err, "A stream not ready error was expected") {
-		assert.Equal(t, err, &ErrStreamNotReady{s: "abc"})
+		assert.Equal(t, err, &ErrStreamNotReady{Stream: "abc"})
 	}
 }
 
@@ -115,7 +115,7 @@ func TestStream_WriteStreamBecomesReady(t *testing.T) {
 
 	err := s.Write(m)
 	if assert.Error(t, err, "A stream not ready error was expected") {
-		assert.Equal(t, err, &ErrStreamNotReady{s: "abc"})
+		assert.Equal(t, err, &ErrStreamNotReady{Stream: "abc"})
 	}
 
 	fk.mutex.Lock()

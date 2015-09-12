@@ -12,11 +12,11 @@ import (
 )
 
 type ErrStreamNotReady struct {
-	s string
+	Stream string
 }
 
 func (e *ErrStreamNotReady) Error() string {
-	return fmt.Sprintf("not ready, stream: %s", e.s)
+	return fmt.Sprintf("not ready, stream: %s", e.Stream)
 }
 
 // Stream represents a stream that will send messages to its writer.
@@ -94,7 +94,7 @@ func (s *Stream) Write(m *router.Message) error {
 		s.writer.write(m)
 		return nil
 	default:
-		return &ErrStreamNotReady{s: s.name}
+		return &ErrStreamNotReady{Stream: s.name}
 	}
 }
 
