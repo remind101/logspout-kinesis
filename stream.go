@@ -87,7 +87,7 @@ func (s *Stream) create() {
 	})
 
 	if err != nil {
-		logErr(err)
+		ErrorHandler(err)
 	}
 
 	if created {

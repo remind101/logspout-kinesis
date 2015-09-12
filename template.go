@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"text/template"
@@ -64,16 +63,4 @@ func lookUp(arr []string, key string) string {
 		}
 	}
 	return ""
-}
-
-func logErr(err error) {
-	if err != nil {
-		log.Println("kinesis:", err.Error())
-	}
-}
-
-func debug(format string, p ...interface{}) {
-	if os.Getenv("KINESIS_DEBUG") == "true" {
-		log.Printf("kinesis: "+format, p...)
-	}
 }

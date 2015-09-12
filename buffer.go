@@ -62,7 +62,7 @@ func (b *buffer) add(m *router.Message) error {
 
 	pKey, err := executeTmpl(b.pKeyTmpl, m)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	// We default to a uuid if the template didn't match.

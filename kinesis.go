@@ -2,6 +2,7 @@ package kinesis
 
 import (
 	"errors"
+	"log"
 	"os"
 	"text/template"
 
@@ -14,6 +15,7 @@ func init() {
 }
 
 var (
+	ErrorHandler       = logErr
 	ErrMissingTagKey   = errors.New("the tag key is empty, check your template KINESIS_STREAM_TAG_KEY.")
 	ErrMissingTagValue = errors.New("the tag value is empty, check your template KINESIS_STREAM_TAG_VALUE.")
 )
@@ -55,7 +57,7 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 	for m := range logstream {
 		sn, err := executeTmpl(a.StreamTmpl, m)
 		if err != nil {
-			logErr(err)
+			ErrorHandler(err)
 			break
 		}
 
@@ -65,11 +67,11 @@ func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
 		}
 
 		if s, ok := a.Streams[sn]; ok {
-			logErr(s.Write(m))
+			ErrorHandler(s.Write(m))
 		} else {
 			tags, err := tags(a.TagTmpl, m)
 			if err != nil {
-				logErr(err)
+				ErrorHandler(err)
 				break
 			}
 
@@ -99,4 +101,16 @@ func tags(tmpl *template.Template, m *router.Message) (*map[string]*string, erro
 	return &map[string]*string{
 		tagKey: aws.String(tagValue),
 	}, nil
+}
+
+func logErr(err error) {
+	if err != nil {
+		log.Println("kinesis:", err.Error())
+	}
+}
+
+func debug(format string, p ...interface{}) {
+	if os.Getenv("KINESIS_DEBUG") == "true" {
+		log.Printf("kinesis: "+format, p...)
+	}
 }

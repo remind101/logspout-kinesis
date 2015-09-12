@@ -55,7 +55,7 @@ func (w *writer) bufferMessages() {
 				flush()
 			}
 
-			w.buffer.add(m)
+			ErrorHandler(w.buffer.add(m))
 		case <-w.ticker:
 			flush()
 		}
@@ -69,7 +69,7 @@ func (w *writer) flushBuffers() {
 			if empErr, ok := err.(*ErrEmptyBuffer); ok {
 				debug("%s\n", empErr.Error())
 			} else {
-				logErr(err)
+				ErrorHandler(err)
 			}
 		}
 	}
