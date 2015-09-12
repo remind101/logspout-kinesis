@@ -6,42 +6,61 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 )
 
-type ErrEmptyBuffer struct {
-	s string
+type ErrDroppedInput struct {
+	Stream string
+	Count  int
 }
 
-func (e *ErrEmptyBuffer) Error() string {
-	return fmt.Sprintf("buffer is empty, stream: %s", e.s)
+func (e *ErrDroppedInput) Error() string {
+	return fmt.Sprintf("input dropped! stream: %s, # items: %d", e.Stream, e.Count)
 }
 
 type Flusher interface {
-	flush(b buffer) error
+	start()
+	flush(input kinesis.PutRecordsInput)
 }
 
 type flusher struct {
-	client *kinesis.Kinesis
+	client        *kinesis.Kinesis
+	inputs        chan kinesis.PutRecordsInput
+	dropInputFunc func(kinesis.PutRecordsInput)
 }
 
 func newFlusher(client *kinesis.Kinesis) Flusher {
 	return &flusher{
-		client: client,
+		client:        client,
+		inputs:        make(chan kinesis.PutRecordsInput, 10),
+		dropInputFunc: dropInput,
 	}
 }
 
-func (f flusher) flush(b buffer) error {
-	if b.count == 0 {
-		return &ErrEmptyBuffer{
-			s: *b.input.StreamName,
+func (f *flusher) start() {
+	f.flushInputs()
+}
+
+func (f *flusher) flush(input kinesis.PutRecordsInput) {
+	select {
+	case f.inputs <- input:
+	default:
+		f.dropInputFunc(input)
+	}
+}
+
+func (f *flusher) flushInputs() {
+	for inp := range f.inputs {
+		_, err := f.client.PutRecords(&inp)
+		if err != nil {
+			ErrorHandler(err)
 		}
+
+		debug("buffer flushed, stream: %s, length: %d",
+			*inp.StreamName, len(inp.Records))
 	}
+}
 
-	_, err := f.client.PutRecords(&b.input)
-	if err != nil {
-		return err
-	}
-
-	debug("buffer flushed, stream: %s, length: %d",
-		*b.input.StreamName, len(b.input.Records))
-
-	return nil
+func dropInput(input kinesis.PutRecordsInput) {
+	ErrorHandler(&ErrDroppedInput{
+		Stream: *input.StreamName,
+		Count:  len(input.Records),
+	})
 }

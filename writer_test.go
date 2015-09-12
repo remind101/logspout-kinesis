@@ -5,6 +5,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/gliderlabs/logspout/router"
 )
 
@@ -17,14 +18,12 @@ type fakeFlusher struct {
 	flushed   chan struct{}
 }
 
-func (f *fakeFlusher) flush(b buffer) error {
+func (f *fakeFlusher) flush(kinesis.PutRecordsInput) {
 	if f.flushFunc == nil {
 		close(f.flushed)
 	} else {
 		f.flushFunc()
 	}
-
-	return nil
 }
 
 var testLimits = limits{
@@ -88,39 +87,16 @@ func TestWriter_PeriodicFlush(t *testing.T) {
 	}
 }
 
-func TestWriter_BuffersChannelFull(t *testing.T) {
-	b := newBuffer(tmpl, "abc")
-	b.limits = &testLimits
+//func TestWriter_EmptyBuffer(t *testing.T) {}
+// test that w.flusher.flush() is never called?
 
-	f := &fakeFlusher{
-		flushed: make(chan struct{}),
-		flushFunc: func() {
-			<-time.After(time.Minute)
-		},
-	}
+// func TestFlusher_EmptyBuffer(t *testing.T) {
+// 	b := newBuffer(tmpl, "abc")
+// 	f := newFlusher(nil)
+// 	w := newWriter(b, f)
 
-	w := newWriter(b, f)
-	w.ticker = nil
-	w.buffers = make(chan buffer)
-	drop := make(chan struct{})
-	w.dropBufferFunc = func(b buffer) {
-		close(drop)
-	}
-
-	w.start()
-
-	go func() {
-		b := newBuffer(tmpl, "abc")
-		w.buffers <- *b
-	}()
-
-	w.write(m)
-	w.write(m)
-	w.write(m)
-
-	select {
-	case <-drop:
-	case <-time.After(1 * time.Second):
-		t.Fatal("Expected buffer to be dropped")
-	}
-}
+// 	err := w.flusher.flush(*b)
+// 	if assert.Error(t, err, "An empty buffer error was expected.") {
+// 		assert.Equal(t, err, &ErrEmptyBuffer{s: "abc"})
+// 	}
+// }

@@ -58,7 +58,7 @@ func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Templat
 // AWS.
 func (s *Stream) Start() {
 	go s.start()
-	go s.writer.start()
+	s.writer.start()
 }
 
 func (s *Stream) start() {

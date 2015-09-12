@@ -7,30 +7,26 @@ import (
 )
 
 type writer struct {
-	buffer         *buffer
-	flusher        Flusher
-	messages       chan *router.Message
-	buffers        chan buffer
-	dropBufferFunc func(buffer)
-	ticker         <-chan time.Time
+	buffer   *buffer
+	flusher  Flusher
+	messages chan *router.Message
+	ticker   <-chan time.Time
 }
 
 func newWriter(b *buffer, f Flusher) *writer {
 	w := &writer{
-		messages:       make(chan *router.Message),
-		buffers:        make(chan buffer, 10),
-		ticker:         time.NewTicker(time.Second).C,
-		dropBufferFunc: dropBuffer,
-		flusher:        f,
-		buffer:         b,
+		messages: make(chan *router.Message),
+		ticker:   time.NewTicker(time.Second).C,
+		flusher:  f,
+		buffer:   b,
 	}
 
 	return w
 }
 
 func (w *writer) start() {
+	go w.flusher.start()
 	go w.bufferMessages()
-	go w.flushBuffers()
 }
 
 func (w *writer) write(m *router.Message) {
@@ -39,11 +35,7 @@ func (w *writer) write(m *router.Message) {
 
 func (w *writer) bufferMessages() {
 	flush := func() {
-		select {
-		case w.buffers <- *w.buffer:
-		default:
-			w.dropBufferFunc(*w.buffer)
-		}
+		w.flusher.flush(*w.buffer.input)
 		w.buffer.reset()
 	}
 
@@ -56,24 +48,11 @@ func (w *writer) bufferMessages() {
 
 			ErrorHandler(w.buffer.add(m))
 		case <-w.ticker:
-			flush()
-		}
-	}
-}
-
-func (w *writer) flushBuffers() {
-	for b := range w.buffers {
-		err := w.flusher.flush(b)
-		if err != nil {
-			if empErr, ok := err.(*ErrEmptyBuffer); ok {
-				debug("%s\n", empErr.Error())
+			if !w.buffer.empty() {
+				flush()
 			} else {
-				ErrorHandler(err)
+				debug("buffer is empty, stream: %s", *w.buffer.input.StreamName)
 			}
 		}
 	}
-}
-
-func dropBuffer(b buffer) {
-	debug("buffer dropped! items: %d, byteSize: %d\n", b.count, b.byteSize)
 }
