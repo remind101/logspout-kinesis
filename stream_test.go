@@ -1,19 +1,22 @@
 package kinesis
 
 import (
+	"fmt"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/gliderlabs/logspout/router"
+	"github.com/stretchr/testify/assert"
 )
 
 type fakeClient struct {
 	created bool
 	status  string
-	tagged  bool
+	err     error
 	mutex   sync.Mutex
 }
 
@@ -21,7 +24,7 @@ func (f *fakeClient) Create(input *kinesis.CreateStreamInput) (bool, error) {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
-	return f.created, nil
+	return f.created, f.err
 }
 
 func (f *fakeClient) Status(input *kinesis.DescribeStreamInput) string {
@@ -31,11 +34,11 @@ func (f *fakeClient) Status(input *kinesis.DescribeStreamInput) string {
 	return f.status
 }
 
-func (f *fakeClient) Tag(input *kinesis.AddTagsToStreamInput) (bool, error) {
+func (f *fakeClient) Tag(input *kinesis.AddTagsToStreamInput) error {
 	f.mutex.Lock()
 	defer f.mutex.Unlock()
 
-	return f.tagged, nil
+	return f.err
 }
 
 // TODO: implement optional stream creation
@@ -48,7 +51,39 @@ func (f *fakeClient) Tag(input *kinesis.AddTagsToStreamInput) (bool, error) {
 
 // }
 
-func TestStream_StreamNotReady(t *testing.T) {
+func TestStream_CreateAlreadyExists(t *testing.T) {
+	s := NewStream("abc", nil, nil)
+	s.client = &fakeClient{
+		created: true,
+	}
+
+	err := s.create()
+	assert.Nil(t, err)
+}
+
+func TestStream_CreateStatusActive(t *testing.T) {
+	s := NewStream("abc", nil, nil)
+	s.client = &fakeClient{
+		created: false,
+		status:  "ACTIVE",
+	}
+
+	err := s.create()
+	assert.Nil(t, err)
+}
+
+func TestStream_CreateError(t *testing.T) {
+	s := NewStream("abc", nil, nil)
+	s.client = &fakeClient{
+		created: false,
+		err:     awserr.New("RequestError", "500", nil),
+	}
+
+	err := s.create()
+	assert.NotNil(t, err)
+}
+
+func TestStream_WriteStreamNotReady(t *testing.T) {
 	m := &router.Message{
 		Data: "hello",
 	}
@@ -60,27 +95,16 @@ func TestStream_StreamNotReady(t *testing.T) {
 	s.Start()
 	err := s.Write(m)
 
-	if err == nil {
-		t.Fatalf("Expected error: %s", err.Error())
+	if assert.Error(t, err, "A stream not ready error was expected") {
+		assert.Equal(t, err, &ErrStreamNotReady{s: "abc"})
 	}
 }
 
-func TestStream_StreamCreationAlreadyExists(t *testing.T) {
-	s := NewStream("abc", nil, nil)
-	s.client = &fakeClient{
-		created: true,
-	}
-	s.Start()
+func TestStream_WriteStreamBecomesReady(t *testing.T) {
+	tags := make(map[string]*string)
+	tags["name"] = aws.String("kinesis-test")
 
-	select {
-	case <-s.readyTag:
-	case <-time.After(time.Second):
-		t.Fatal("Expected stream to be created, and tag() to be called")
-	}
-}
-
-func TestStream_StreamCreating(t *testing.T) {
-	s := NewStream("abc", nil, nil)
+	s := NewStream("abc", &tags, tmpl)
 	fk := &fakeClient{
 		created: false,
 		status:  "CREATING",
@@ -88,54 +112,15 @@ func TestStream_StreamCreating(t *testing.T) {
 	}
 	s.client = fk
 	s.Start()
+	s.Writer.Start()
 
 	err := s.Write(m)
-	if err == nil {
-		t.Fatalf("Expected error: %s", err.Error())
+	if assert.Error(t, err, "A stream not ready error was expected") {
+		assert.Equal(t, err, &ErrStreamNotReady{s: "abc"})
 	}
 
 	fk.mutex.Lock()
 	fk.status = "ACTIVE"
-	fk.mutex.Unlock()
-
-	select {
-	case <-s.readyTag:
-	case <-time.After(time.Second):
-		t.Fatal("Expected stream to be active, and tag() to be called")
-	}
-}
-
-func TestStream_StreamCreatedButNotTagged(t *testing.T) {
-	m := &router.Message{
-		Data: "hello",
-	}
-
-	tags := make(map[string]*string)
-	tags["name"] = aws.String("kinesis-test")
-
-	s := NewStream("abc", &tags, tmpl)
-	fk := &fakeClient{
-		created: true,
-	}
-	s.client = fk
-
-	b := newBuffer(tmpl, s.name)
-	b.limits = &testLimits
-	f := &fakeFlusher{
-		flushed: make(chan struct{}),
-	}
-	s.Writer = newWriter(b, f)
-
-	s.Start()
-	s.Writer.Start()
-
-	err := s.Write(m)
-	if err == nil {
-		t.Fatalf("Expected error: %s", err.Error())
-	}
-
-	fk.mutex.Lock()
-	fk.tagged = true
 	fk.mutex.Unlock()
 
 	timeout := make(chan bool)
@@ -144,8 +129,10 @@ func TestStream_StreamCreatedButNotTagged(t *testing.T) {
 		timeout <- true
 	}()
 
+	// trying to write until we succeed or timeout
 	for {
 		err = s.Write(m)
+		fmt.Println(err)
 		if err == nil {
 			break
 		}
@@ -157,8 +144,5 @@ func TestStream_StreamCreatedButNotTagged(t *testing.T) {
 		}
 	}
 
-	err = s.Write(m)
-	if err != nil {
-		t.Fatalf("Expected successful write, error: %s", err.Error())
-	}
+	assert.Nil(t, err)
 }

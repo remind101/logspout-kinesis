@@ -27,7 +27,8 @@ type Stream struct {
 	Writer     *writer
 	ready      bool
 	readyWrite chan bool
-	readyTag   chan bool
+	err        error
+	errChan    chan error
 }
 
 // NewStream instantiates a new stream.
@@ -46,9 +47,8 @@ func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Templat
 		name:       name,
 		tags:       tags,
 		Writer:     writer,
-		ready:      false,
 		readyWrite: make(chan bool),
-		readyTag:   make(chan bool),
+		errChan:    make(chan error),
 	}
 
 	return s
@@ -57,41 +57,58 @@ func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Templat
 // Start runs the goroutines making calls to create and tag the stream on
 // AWS.
 func (s *Stream) Start() {
-	go s.create()
-	go s.tag()
+	go s.start()
+}
+
+func (s *Stream) start() {
+	if err := s.create(); err != nil {
+		s.errChan <- err
+		ErrorHandler(err)
+		return
+	}
+
+	if err := s.tag(); err != nil {
+		s.errChan <- err
+		ErrorHandler(err)
+		return
+	}
+
+	s.readyWrite <- true
+	log.Printf("ready! stream: %s", s.name)
 }
 
 // Write sends the message to the writer if the stream is ready
 // i.e created and tagged.
 func (s *Stream) Write(m *router.Message) error {
-	if s.ready {
-		s.Writer.write(m)
-		return nil
+	select {
+	case s.ready = <-s.readyWrite:
+	case s.err = <-s.errChan:
+	default:
 	}
 
-	select {
-	case <-s.readyWrite:
-		s.ready = true
-		log.Printf("ready! stream: %s", s.name)
+	switch {
+	case s.err != nil:
+		return s.err
+	case s.ready:
+		s.Writer.write(m)
+		return nil
 	default:
 		return &ErrStreamNotReady{s: s.name}
 	}
-
-	return nil
 }
 
-func (s *Stream) create() {
+func (s *Stream) create() error {
 	created, err := s.client.Create(&kinesis.CreateStreamInput{
 		ShardCount: aws.Int64(1),
 		StreamName: aws.String(s.name),
 	})
 
 	if err != nil {
-		ErrorHandler(err)
+		return err
 	}
 
 	if created {
-		s.readyTag <- true
+		return nil
 	} else {
 		debug("need to create stream: %s", s.name)
 		for {
@@ -99,8 +116,7 @@ func (s *Stream) create() {
 				StreamName: aws.String(s.name),
 			})
 			if status == "ACTIVE" {
-				s.readyTag <- true
-				break
+				return nil
 			} else {
 				// wait a bit
 				time.Sleep(4 * time.Second)
@@ -110,17 +126,15 @@ func (s *Stream) create() {
 	}
 }
 
-func (s *Stream) tag() {
-	// wait to be created...
-	<-s.readyTag
-
-	tagged, err := s.client.Tag(&kinesis.AddTagsToStreamInput{
+func (s *Stream) tag() error {
+	err := s.client.Tag(&kinesis.AddTagsToStreamInput{
 		StreamName: aws.String(s.name),
 		Tags:       *s.tags,
 	})
-	if !tagged {
-		panic(err)
+
+	if err != nil {
+		return err
 	}
 
-	s.readyWrite <- true
+	return nil
 }

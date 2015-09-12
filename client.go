@@ -8,7 +8,7 @@ import (
 type Client interface {
 	Create(*kinesis.CreateStreamInput) (bool, error)
 	Status(*kinesis.DescribeStreamInput) string
-	Tag(*kinesis.AddTagsToStreamInput) (bool, error)
+	Tag(*kinesis.AddTagsToStreamInput) error
 }
 
 type client struct {
@@ -38,11 +38,11 @@ func (c *client) Status(input *kinesis.DescribeStreamInput) string {
 	return *resp.StreamDescription.StreamStatus
 }
 
-func (c *client) Tag(input *kinesis.AddTagsToStreamInput) (bool, error) {
+func (c *client) Tag(input *kinesis.AddTagsToStreamInput) error {
 	_, err := c.kinesis.AddTagsToStream(input)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return true, nil
+	return nil
 }
