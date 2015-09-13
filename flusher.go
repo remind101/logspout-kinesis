@@ -18,6 +18,7 @@ func (e *ErrDroppedInput) Error() string {
 type Flusher interface {
 	start()
 	flush(input kinesis.PutRecordsInput)
+	flushInputs()
 }
 
 type flusher struct {

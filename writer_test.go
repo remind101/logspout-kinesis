@@ -14,11 +14,25 @@ var m = &router.Message{
 }
 
 type fakeFlusher struct {
-	flushFunc func()
-	flushed   chan struct{}
+	inputs        chan kinesis.PutRecordsInput
+	dropInputFunc func(kinesis.PutRecordsInput)
+	flushFunc     func()
+	flushed       chan struct{}
 }
 
-func (f *fakeFlusher) flush(kinesis.PutRecordsInput) {
+func (f *fakeFlusher) start() {
+	f.flushInputs()
+}
+
+func (f *fakeFlusher) flush(input kinesis.PutRecordsInput) {
+	select {
+	case f.inputs <- input:
+	default:
+		f.dropInputFunc(input)
+	}
+}
+
+func (f *fakeFlusher) flushInputs() {
 	if f.flushFunc == nil {
 		close(f.flushed)
 	} else {
@@ -39,6 +53,7 @@ func TestWriter_Flush(t *testing.T) {
 	b.limits = &testLimits
 
 	f := &fakeFlusher{
+		inputs:  make(chan kinesis.PutRecordsInput, 10),
 		flushed: make(chan struct{}),
 	}
 
@@ -53,7 +68,7 @@ func TestWriter_Flush(t *testing.T) {
 
 	select {
 	case <-f.flushed:
-	case <-time.After(time.Second):
+	case <-time.After(1 * time.Second):
 		t.Fatal("Expected flush to be called")
 	}
 }
@@ -63,6 +78,7 @@ func TestWriter_PeriodicFlush(t *testing.T) {
 	b.limits = &testLimits
 
 	f := &fakeFlusher{
+		inputs:  make(chan kinesis.PutRecordsInput, 10),
 		flushed: make(chan struct{}),
 	}
 
@@ -86,17 +102,3 @@ func TestWriter_PeriodicFlush(t *testing.T) {
 		t.Fatal("Expected flush to be called")
 	}
 }
-
-//func TestWriter_EmptyBuffer(t *testing.T) {}
-// test that w.flusher.flush() is never called?
-
-// func TestFlusher_EmptyBuffer(t *testing.T) {
-// 	b := newBuffer(tmpl, "abc")
-// 	f := newFlusher(nil)
-// 	w := newWriter(b, f)
-
-// 	err := w.flusher.flush(*b)
-// 	if assert.Error(t, err, "An empty buffer error was expected.") {
-// 		assert.Equal(t, err, &ErrEmptyBuffer{s: "abc"})
-// 	}
-// }

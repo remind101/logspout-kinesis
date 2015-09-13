@@ -1,7 +1,6 @@
 package kinesis
 
 import (
-	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -131,7 +130,6 @@ func TestStream_WriteStreamBecomesReady(t *testing.T) {
 	// trying to write until we succeed or timeout
 	for {
 		err = s.Write(m)
-		fmt.Println(err)
 		if err == nil {
 			break
 		}
