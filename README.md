@@ -1,4 +1,4 @@
-# logspout-kinesis
+# logspout-kinesis [![Circle CI](https://circleci.com/gh/remind101/logspout-kinesis.svg?style=svg)](https://circleci.com/gh/remind101/logspout-kinesis)
 
 A [Logspout](https://github.com/gliderlabs/logspout) adapter for writing Docker container logs to [Amazon Kinesis](http://aws.amazon.com/kinesis/).
 
@@ -40,15 +40,15 @@ $ export KINESIS_PARTITION_KEY_TEMPLATE={{ index .Container.Config.Labels "app" 
 **IMPORTANT**: if the partition key end up being an empty string, logspout-kinesis will default to set it as a uuid. If debug logging is activated (see below), it will tell you so.
 
 ### stream creation
-By default, **logspout-kinesis** doesn't create a stream if it is missing from Kinesis. You can enable this by creating an environment variable `KINESIS_STREAM_CREATION` and set it to `true`.
+By default, logspout-kinesis **will** create a stream if it is missing from Kinesis.
 
 ### stream tagging
-By default, **logspout-kinesis** doesn't tag a stream it just created. You can enable this by creating an environment variable `KINESIS_TAG_STREAM` and set it to `true`.
-Then you can set the `KINESIS_STREAM_TAG_KEY` environment variable to set the tag key, and the `KINESIS_STREAM_TAG_VALUE` variable to set the template you want to use for the tag value.
+By default, logspout-kinesis **will** tag a stream it just created.
+
+You can set the `KINESIS_STREAM_TAG_KEY` environment variable to set the tag key, and the `KINESIS_STREAM_TAG_VALUE` variable to set the template you want to use for the tag value.
 
 A complete example would be:
 ```console
-KINESIS_TAG_STREAM=true
 KINESIS_STREAM_TAG_KEY="app"
 KINESIS_STREAM_TAG_VALUE={{ lookUp .Container.Config.Env "EMPIRE_APPNAME" }}
 ```

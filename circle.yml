@@ -1,0 +1,16 @@
+checkout:
+  post:
+    - rm -rf ~/.go_workspace/src/github.com/remind101
+    - mkdir -p ~/.go_workspace/src/github.com/remind101
+    - cp -R ~/logspout-kinesis ~/.go_workspace/src/github.com/remind101/logspout-kinesis
+
+dependencies:
+  override:
+    - go install -a -race std
+    - go get github.com/tools/godep
+    - go version
+
+test:
+  override:
+    - cd ~/.go_workspace/src/github.com/remind101/logspout-kinesis && godep go test -race -short ./...
+    - cd ~/.go_workspace/src/github.com/remind101/logspout-kinesis && godep go vet ./...

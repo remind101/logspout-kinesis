@@ -1,8 +1,7 @@
 package kinesis
 
 import (
-	"fmt"
-	"sync"
+	"errors"
 	"text/template"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -11,86 +10,58 @@ import (
 	"github.com/pborman/uuid"
 )
 
-// PutRecordsLimit is the maximum number of records allowed for a PutRecords request.
-var PutRecordsLimit = 500
+// ErrRecordTooBig is raised when a record is too big to be sent.
+var ErrRecordTooBig = errors.New("data byte size is over the limit")
 
-// RecordSizeLimit is the maximum allowed size per record.
-var RecordSizeLimit int = 1 * 1024 * 1024 // 1MB
+type limits struct {
+	putRecords     int
+	putRecordsSize int
+	recordSize     int
+}
 
-// PutRecordsSizeLimit is the maximum allowed size per PutRecords request.
-var PutRecordsSizeLimit int = 5 * 1024 * 1024 // 5MB
+const (
+	// PutRecordsLimit is the maximum number of records allowed for a PutRecords request.
+	PutRecordsLimit int = 500
 
-type recordBuffer struct {
-	client   *kinesis.Kinesis
-	pKeyTmpl *template.Template
-	input    *kinesis.PutRecordsInput
+	// PutRecordsSizeLimit is the maximum allowed size per PutRecords request.
+	PutRecordsSizeLimit int = 5 * 1024 * 1024 // 5MB
+
+	// RecordSizeLimit is the maximum allowed size per record.
+	RecordSizeLimit int = 1 * 1024 * 1024 // 1MB
+)
+
+type buffer struct {
 	count    int
 	byteSize int
-	mutex    sync.Mutex
+	pKeyTmpl *template.Template
+	input    *kinesis.PutRecordsInput
+	limits   *limits
 }
 
-func newRecordBuffer(client *kinesis.Kinesis, streamName string) (*recordBuffer, error) {
-	pKeyTmpl, err := compileTmpl("KINESIS_PARTITION_KEY_TEMPLATE")
-	if err != nil {
-		return nil, err
+func newBuffer(tmpl *template.Template, sn string) *buffer {
+	return &buffer{
+		pKeyTmpl: tmpl,
+		input: &kinesis.PutRecordsInput{
+			StreamName: aws.String(sn),
+			Records:    make([]*kinesis.PutRecordsRequestEntry, 0),
+		},
+		limits: &limits{
+			putRecords:     PutRecordsLimit,
+			putRecordsSize: PutRecordsSizeLimit,
+			recordSize:     RecordSizeLimit,
+		},
 	}
-
-	input := &kinesis.PutRecordsInput{
-		StreamName: aws.String(streamName),
-		Records:    make([]*kinesis.PutRecordsRequestEntry, 0),
-	}
-
-	return &recordBuffer{
-		client:   client,
-		pKeyTmpl: pKeyTmpl,
-		input:    input,
-	}, nil
 }
 
-type recordSizeLimitError struct {
-	caller string
-	length int
-}
-
-func (e *recordSizeLimitError) Error() string {
-	return fmt.Sprintf("%s: log data byte size (%d) is over the limit.", e.caller, e.length)
-}
-
-// Add fills the buffer with new data, or flushes it if one of the limit
-// has hit.
-func (r *recordBuffer) Add(m *router.Message) error {
-	data := m.Data
-	dataLen := len(data)
+func (b *buffer) add(m *router.Message) error {
+	dataLen := len(m.Data)
 
 	// This record is too large, we can't submit it to kinesis.
-	if dataLen > RecordSizeLimit {
-		return &recordSizeLimitError{
-			caller: "recordBuffer.Add",
-			length: dataLen,
-		}
+	if dataLen > b.limits.recordSize {
+		return ErrRecordTooBig
 	}
 
-	defer r.mutex.Unlock()
-	r.mutex.Lock()
-
-	// Adding this event would make our request have too many records. Flush first.
-	if r.count+1 > PutRecordsLimit {
-		err := r.Flush()
-		if err != nil {
-			return err
-		}
-	}
-
-	// Adding this event would make our request too large. Flush first.
-	if r.byteSize+dataLen > PutRecordsSizeLimit {
-		err := r.Flush()
-		if err != nil {
-			return err
-		}
-	}
-
-	// Partition key
-	pKey, err := executeTmpl(r.pKeyTmpl, m)
+	pKey, err := executeTmpl(b.pKeyTmpl, m)
 	if err != nil {
 		return err
 	}
@@ -98,55 +69,49 @@ func (r *recordBuffer) Add(m *router.Message) error {
 	// We default to a uuid if the template didn't match.
 	if pKey == "" {
 		pKey = uuid.New()
-		debugLog("The partition key is an empty string, defaulting to a uuid %s\n", pKey)
+		debug("the partition key is an empty string, defaulting to a uuid %s", pKey)
 	}
 
 	// Add to count
-	r.count += 1
+	b.count++
 
 	// Add data and partition key size to byteSize
-	r.byteSize += dataLen + len(pKey)
+	b.byteSize += dataLen + len(pKey)
 
 	// Add record
-	r.input.Records = append(r.input.Records, &kinesis.PutRecordsRequestEntry{
-		Data:         []byte(data),
+	b.input.Records = append(b.input.Records, &kinesis.PutRecordsRequestEntry{
+		Data:         []byte(m.Data),
 		PartitionKey: aws.String(pKey),
 	})
 
-	debugLog("kinesis: record added, stream name: %s, partition key: %s, length: %d",
-		*r.input.StreamName, pKey, len(r.input.Records))
+	debug("record added, stream: %s, partition key: %s, length: %d",
+		*b.input.StreamName, pKey, len(b.input.Records))
 
 	return nil
 }
 
-// Flush flushes the buffer.
-func (r *recordBuffer) Flush() error {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	if r.count == 0 {
-		debugLog("kinesis: nothing to flush, stream name: %s", *r.input.StreamName)
-		return nil
+func (b *buffer) full(m *router.Message) bool {
+	// Adding this event would make our request have too many records.
+	if b.count+1 > b.limits.putRecords {
+		return true
 	}
 
-	defer r.reset()
-
-	resp, err := r.client.PutRecords(r.input)
-	if err != nil {
-		return err
+	// Adding this event would make our request too large.
+	if b.byteSize+len(m.Data) > b.limits.putRecordsSize {
+		return true
 	}
 
-	debugLog("kinesis: buffer flushed, stream name: %s, records sent: %d, records failed: %d",
-		*r.input.StreamName, len(r.input.Records), *resp.FailedRecordCount)
-
-	return nil
+	return false
 }
 
-func (r *recordBuffer) reset() {
-	r.count = 0
-	r.byteSize = 0
-	r.input.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
+func (b *buffer) empty() bool {
+	return b.count == 0
+}
 
-	debugLog("kinesis: buffer reset, stream name: %s, length: %d",
-		*r.input.StreamName, len(r.input.Records))
+func (b *buffer) reset() {
+	b.count = 0
+	b.byteSize = 0
+	b.input.Records = make([]*kinesis.PutRecordsRequestEntry, 0)
+
+	debug("buffer reset, stream: %s", *b.input.StreamName)
 }

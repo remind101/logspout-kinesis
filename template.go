@@ -2,8 +2,8 @@ package kinesis
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"text/template"
@@ -15,18 +15,22 @@ var funcMap = template.FuncMap{
 	"lookUp": lookUp,
 }
 
-type missingEnvVarError struct {
-	envVar string
+// ErrEmptyTmpl is returned when the template is empty.
+var ErrEmptyTmpl = errors.New("the template is empty")
+
+// MissingEnvVarError is return when an environment variable is missing.
+type MissingEnvVarError struct {
+	EnvVar string
 }
 
-func (e *missingEnvVarError) Error() string {
-	return fmt.Sprintf("Missing required %s environment variable.\n", e.envVar)
+func (e *MissingEnvVarError) Error() string {
+	return fmt.Sprintf("missing required %s environment variable", e.EnvVar)
 }
 
 func compileTmpl(envVar string) (*template.Template, error) {
 	tmplString := os.Getenv(envVar)
 	if tmplString == "" {
-		return nil, &missingEnvVarError{envVar: envVar}
+		return nil, &MissingEnvVarError{EnvVar: envVar}
 	}
 
 	tmpl, err := template.New("").Funcs(funcMap).Parse(tmplString)
@@ -38,6 +42,10 @@ func compileTmpl(envVar string) (*template.Template, error) {
 }
 
 func executeTmpl(tmpl *template.Template, m *router.Message) (string, error) {
+	if tmpl == nil {
+		return "", ErrEmptyTmpl
+	}
+
 	var res bytes.Buffer
 	err := tmpl.Execute(&res, m)
 	if err != nil {
@@ -57,24 +65,4 @@ func lookUp(arr []string, key string) string {
 		}
 	}
 	return ""
-}
-
-func logErr(err error) {
-	if err != nil {
-		log.Println("kinesis: ", err.Error())
-	}
-}
-
-func logErrs(err []error) {
-	if err != nil {
-		for _, e := range err {
-			logErr(e)
-		}
-	}
-}
-
-func debugLog(format string, p ...interface{}) {
-	if os.Getenv("KINESIS_DEBUG") == "true" {
-		log.Printf(format, p...)
-	}
 }

@@ -1,99 +1,123 @@
 package kinesis
 
 import (
+	"errors"
 	"log"
-	"sync"
+	"os"
 	"text/template"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/gliderlabs/logspout/router"
 )
 
 func init() {
-	router.AdapterFactories.Register(NewKinesisAdapter, "kinesis")
+	router.AdapterFactories.Register(NewAdapter, "kinesis")
 }
 
-type KinesisAdapter struct {
-	Client     *kinesis.Kinesis
-	Drainers   map[string]*Drainer
-	Launched   map[string]bool
+var (
+	// ErrorHandler handles the reporting of an error.
+	ErrorHandler = logErr
+
+	// ErrMissingTagKey is returned when the tag key environment variable is missing.
+	ErrMissingTagKey = errors.New("the tag key is empty, check your template KINESIS_STREAM_TAG_KEY")
+
+	// ErrMissingTagValue is returned when the tag value environment variable is missing.
+	ErrMissingTagValue = errors.New("the tag value is empty, check your template KINESIS_STREAM_TAG_VALUE")
+)
+
+// Adapter represents the logspout adapter for Kinesis.
+type Adapter struct {
+	Streams    map[string]*Stream
 	StreamTmpl *template.Template
-	mutex      sync.Mutex
+	TagTmpl    *template.Template
+	PKeyTmpl   *template.Template
 }
 
-func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
-	drainers := make(map[string]*Drainer)
-	launched := make(map[string]bool)
-	client := kinesis.New(&aws.Config{})
-	tmpl, err := compileTmpl("KINESIS_STREAM_TEMPLATE")
+// NewAdapter creates a kinesis adapter. Called during init.
+func NewAdapter(route *router.Route) (router.LogAdapter, error) {
+	sTmpl, err := compileTmpl("KINESIS_STREAM_TEMPLATE")
 	if err != nil {
 		return nil, err
 	}
 
-	return &KinesisAdapter{
-		Client:     client,
-		Drainers:   drainers,
-		Launched:   launched,
-		StreamTmpl: tmpl,
+	tagTmpl, err := compileTmpl("KINESIS_STREAM_TAG_VALUE")
+	if err != nil {
+		return nil, err
+	}
+
+	pTmpl, err := compileTmpl("KINESIS_PARTITION_KEY_TEMPLATE")
+	if err != nil {
+		return nil, err
+	}
+
+	streams := make(map[string]*Stream)
+
+	return &Adapter{
+		Streams:    streams,
+		StreamTmpl: sTmpl,
+		TagTmpl:    tagTmpl,
+		PKeyTmpl:   pTmpl,
 	}, nil
 }
 
-func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
-	for {
-		m, open := <-logstream
-		if !open {
-			log.Println("kinesis: Channel is closed, flushing all the buffers")
-			logErrs(a.FlushAll())
-			break
-		}
-
-		streamName, err := executeTmpl(a.StreamTmpl, m)
+// Stream handles the routing of a message to Kinesis.
+func (a *Adapter) Stream(logstream chan *router.Message) {
+	for m := range logstream {
+		sn, err := executeTmpl(a.StreamTmpl, m)
 		if err != nil {
-			logErr(err)
+			ErrorHandler(err)
 			break
 		}
 
-		if streamName == "" {
-			debugLog("The stream name is empty, couldn't match the template. Skipping the log.\n")
+		if sn == "" {
+			debug("the stream name is empty, couldn't match the template. Skipping the log.")
 			continue
 		}
 
-		if d, ok := a.findDrainer(streamName); ok {
-			logErr(d.Buffer.Add(m))
+		if s, ok := a.Streams[sn]; ok {
+			ErrorHandler(s.Write(m))
 		} else {
-			if _, ok := a.Launched[streamName]; !ok {
-				go newDrainer(a, streamName, m)
-				a.Launched[streamName] = true
+			tags, err := tags(a.TagTmpl, m)
+			if err != nil {
+				ErrorHandler(err)
+				break
 			}
+
+			s := NewStream(sn, tags, a.PKeyTmpl)
+			s.Start()
+			a.Streams[sn] = s
 		}
 	}
 }
 
-// FlushAll flushes all the kinesis buffers one by one.
-func (a *KinesisAdapter) FlushAll() []error {
-	var err []error
-
-	for _, d := range a.Drainers {
-		err = append(err, d.Buffer.Flush())
+func tags(tmpl *template.Template, m *router.Message) (*map[string]*string, error) {
+	tagKey := os.Getenv("KINESIS_STREAM_TAG_KEY")
+	if tagKey == "" {
+		return nil, ErrMissingTagKey
 	}
 
-	return err
+	tagValue, err := executeTmpl(tmpl, m)
+	if err != nil {
+		return nil, err
+	}
+
+	if tagValue == "" {
+		return nil, ErrMissingTagValue
+	}
+
+	return &map[string]*string{
+		tagKey: aws.String(tagValue),
+	}, nil
 }
 
-func (a *KinesisAdapter) findDrainer(streamName string) (*Drainer, bool) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	d, ok := a.Drainers[streamName]
-
-	return d, ok
+func logErr(err error) {
+	if err != nil {
+		log.Println("kinesis:", err.Error())
+	}
 }
 
-func (a *KinesisAdapter) addDrainer(streamName string, d *Drainer) {
-	a.mutex.Lock()
-	defer a.mutex.Unlock()
-
-	log.Printf("kinesis: added drainer %s\n", streamName)
-	a.Drainers[streamName] = d
+func debug(format string, p ...interface{}) {
+	if os.Getenv("KINESIS_DEBUG") == "true" {
+		log.Printf("kinesis: "+format, p...)
+	}
 }
