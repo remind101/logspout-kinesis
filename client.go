@@ -5,6 +5,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 )
 
+// Client is a wrapper for the AWS Kinesis client.
 type Client interface {
 	Create(*kinesis.CreateStreamInput) (bool, error)
 	Status(*kinesis.DescribeStreamInput) string
@@ -22,12 +23,10 @@ func (c *client) Create(input *kinesis.CreateStreamInput) (bool, error) {
 		if reqErr, ok := err.(awserr.RequestFailure); ok {
 			if reqErr.Code() == "ResourceInUseException" {
 				return true, nil
-			} else {
-				return false, err
 			}
-		} else {
 			return false, err
 		}
+		return false, err
 	}
 
 	return false, nil

@@ -15,6 +15,10 @@ var funcMap = template.FuncMap{
 	"lookUp": lookUp,
 }
 
+// ErrEmptyTmpl is returned when the template is empty.
+var ErrEmptyTmpl = errors.New("the template is empty")
+
+// MissingEnvVarError is return when an environment variable is missing.
 type MissingEnvVarError struct {
 	EnvVar string
 }
@@ -36,8 +40,6 @@ func compileTmpl(envVar string) (*template.Template, error) {
 
 	return tmpl, nil
 }
-
-var ErrEmptyTmpl = errors.New("the template is empty")
 
 func executeTmpl(tmpl *template.Template, m *router.Message) (string, error) {
 	if tmpl == nil {

@@ -46,9 +46,8 @@ var testLimits = limits{
 	recordSize:     RecordSizeLimit,
 }
 
-var tmpl, _ = template.New("").Parse("abc")
-
 func TestWriter_Flush(t *testing.T) {
+	tmpl, _ := template.New("").Parse("abc")
 	b := newBuffer(tmpl, "abc")
 	b.limits = &testLimits
 
@@ -74,6 +73,7 @@ func TestWriter_Flush(t *testing.T) {
 }
 
 func TestWriter_PeriodicFlush(t *testing.T) {
+	tmpl, _ := template.New("").Parse("abc")
 	b := newBuffer(tmpl, "abc")
 	b.limits = &testLimits
 

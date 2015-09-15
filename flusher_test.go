@@ -2,6 +2,7 @@ package kinesis
 
 import (
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -42,6 +43,7 @@ func TestFlusher_IntegrationInputsChannelFull(t *testing.T) {
 		},
 	}
 
+	tmpl, _ := template.New("").Parse("abc")
 	tags := make(map[string]*string)
 	tags["name"] = aws.String("kinesis-test")
 

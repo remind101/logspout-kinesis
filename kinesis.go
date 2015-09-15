@@ -11,23 +11,30 @@ import (
 )
 
 func init() {
-	router.AdapterFactories.Register(NewKinesisAdapter, "kinesis")
+	router.AdapterFactories.Register(NewAdapter, "kinesis")
 }
 
 var (
-	ErrorHandler       = logErr
-	ErrMissingTagKey   = errors.New("the tag key is empty, check your template KINESIS_STREAM_TAG_KEY.")
-	ErrMissingTagValue = errors.New("the tag value is empty, check your template KINESIS_STREAM_TAG_VALUE.")
+	// ErrorHandler handles the reporting of an error.
+	ErrorHandler = logErr
+
+	// ErrMissingTagKey is returned when the tag key environment variable is missing.
+	ErrMissingTagKey = errors.New("the tag key is empty, check your template KINESIS_STREAM_TAG_KEY")
+
+	// ErrMissingTagValue is returned when the tag value environment variable is missing.
+	ErrMissingTagValue = errors.New("the tag value is empty, check your template KINESIS_STREAM_TAG_VALUE")
 )
 
-type KinesisAdapter struct {
+// Adapter represents the logspout adapter for Kinesis.
+type Adapter struct {
 	Streams    map[string]*Stream
 	StreamTmpl *template.Template
 	TagTmpl    *template.Template
 	PKeyTmpl   *template.Template
 }
 
-func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
+// NewAdapter creates a kinesis adapter. Called during init.
+func NewAdapter(route *router.Route) (router.LogAdapter, error) {
 	sTmpl, err := compileTmpl("KINESIS_STREAM_TEMPLATE")
 	if err != nil {
 		return nil, err
@@ -45,7 +52,7 @@ func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
 
 	streams := make(map[string]*Stream)
 
-	return &KinesisAdapter{
+	return &Adapter{
 		Streams:    streams,
 		StreamTmpl: sTmpl,
 		TagTmpl:    tagTmpl,
@@ -53,7 +60,8 @@ func NewKinesisAdapter(route *router.Route) (router.LogAdapter, error) {
 	}, nil
 }
 
-func (a *KinesisAdapter) Stream(logstream chan *router.Message) {
+// Stream handles the routing of a message to Kinesis.
+func (a *Adapter) Stream(logstream chan *router.Message) {
 	for m := range logstream {
 		sn, err := executeTmpl(a.StreamTmpl, m)
 		if err != nil {

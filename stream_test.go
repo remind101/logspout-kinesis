@@ -3,6 +3,7 @@ package kinesis
 import (
 	"sync"
 	"testing"
+	"text/template"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -95,11 +96,12 @@ func TestStream_WriteStreamNotReady(t *testing.T) {
 	err := s.Write(m)
 
 	if assert.Error(t, err, "A stream not ready error was expected") {
-		assert.Equal(t, err, &ErrStreamNotReady{Stream: "abc"})
+		assert.Equal(t, err, &StreamNotReadyError{Stream: "abc"})
 	}
 }
 
 func TestStream_WriteStreamBecomesReady(t *testing.T) {
+	tmpl, _ := template.New("").Parse("abc")
 	tags := make(map[string]*string)
 	tags["name"] = aws.String("kinesis-test")
 
@@ -114,7 +116,7 @@ func TestStream_WriteStreamBecomesReady(t *testing.T) {
 
 	err := s.Write(m)
 	if assert.Error(t, err, "A stream not ready error was expected") {
-		assert.Equal(t, err, &ErrStreamNotReady{Stream: "abc"})
+		assert.Equal(t, err, &StreamNotReadyError{Stream: "abc"})
 	}
 
 	fk.mutex.Lock()

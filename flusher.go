@@ -6,15 +6,17 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 )
 
-type ErrDroppedInput struct {
+// DroppedInputError is returned when an input is dropped.
+type DroppedInputError struct {
 	Stream string
 	Count  int
 }
 
-func (e *ErrDroppedInput) Error() string {
+func (e *DroppedInputError) Error() string {
 	return fmt.Sprintf("input dropped! stream: %s, # items: %d", e.Stream, e.Count)
 }
 
+// Flusher flushes the inputs to Amazon Kinesis.
 type Flusher interface {
 	start()
 	flush(input kinesis.PutRecordsInput)
@@ -60,7 +62,7 @@ func (f *flusher) flushInputs() {
 }
 
 func dropInput(input kinesis.PutRecordsInput) {
-	ErrorHandler(&ErrDroppedInput{
+	ErrorHandler(&DroppedInputError{
 		Stream: *input.StreamName,
 		Count:  len(input.Records),
 	})

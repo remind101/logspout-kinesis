@@ -11,11 +11,12 @@ import (
 	"github.com/gliderlabs/logspout/router"
 )
 
-type ErrStreamNotReady struct {
+// StreamNotReadyError is returned while the stream is being created.
+type StreamNotReadyError struct {
 	Stream string
 }
 
-func (e *ErrStreamNotReady) Error() string {
+func (e *StreamNotReadyError) Error() string {
 	return fmt.Sprintf("not ready, stream: %s", e.Stream)
 }
 
@@ -94,7 +95,7 @@ func (s *Stream) Write(m *router.Message) error {
 		s.writer.write(m)
 		return nil
 	default:
-		return &ErrStreamNotReady{Stream: s.name}
+		return &StreamNotReadyError{Stream: s.name}
 	}
 }
 
@@ -110,20 +111,18 @@ func (s *Stream) create() error {
 
 	if created {
 		return nil
-	} else {
-		debug("need to create stream: %s", s.name)
-		for {
-			status := s.client.Status(&kinesis.DescribeStreamInput{
-				StreamName: aws.String(s.name),
-			})
-			if status == "ACTIVE" {
-				return nil
-			} else {
-				// wait a bit
-				time.Sleep(4 * time.Second)
-			}
-			debug("stream %s status: %s", s.name, status)
+	}
+
+	debug("need to create stream: %s", s.name)
+	for {
+		status := s.client.Status(&kinesis.DescribeStreamInput{
+			StreamName: aws.String(s.name),
+		})
+		if status == "ACTIVE" {
+			return nil
 		}
+		time.Sleep(4 * time.Second) // wait a bit
+		debug("stream %s status: %s", s.name, status)
 	}
 }
 
