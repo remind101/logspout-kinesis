@@ -54,7 +54,9 @@ func newBuffer(tmpl *template.Template, sn string) *buffer {
 }
 
 func (b *buffer) add(m *router.Message) error {
-	dataLen := len(m.Data)
+	prefix := "2015-09-17T12:52:02 [v3.web]: "
+	data := prefix + m.Data
+	dataLen := len(data)
 
 	// This record is too large, we can't submit it to kinesis.
 	if dataLen > b.limits.recordSize {
@@ -80,7 +82,7 @@ func (b *buffer) add(m *router.Message) error {
 
 	// Add record
 	b.input.Records = append(b.input.Records, &kinesis.PutRecordsRequestEntry{
-		Data:         []byte(m.Data),
+		Data:         []byte(data),
 		PartitionKey: aws.String(pKey),
 	})
 
