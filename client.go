@@ -10,6 +10,7 @@ type Client interface {
 	Create(*kinesis.CreateStreamInput) (bool, error)
 	Status(*kinesis.DescribeStreamInput) string
 	Tag(*kinesis.AddTagsToStreamInput) error
+	Kinesis() *kinesis.Kinesis
 }
 
 type client struct {
@@ -44,4 +45,8 @@ func (c *client) Tag(input *kinesis.AddTagsToStreamInput) error {
 	}
 
 	return nil
+}
+
+func (c *client) Kinesis() *kinesis.Kinesis {
+	return c.kinesis
 }
