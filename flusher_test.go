@@ -43,18 +43,28 @@ func TestFlusher_IntegrationInputsChannelFull(t *testing.T) {
 		},
 	}
 
-	tmpl, _ := template.New("").Parse("abc")
+	streamName := "abc"
+	processName := "dummy"
+	tmpl, _ := template.New("").Parse(processName)
 	tags := make(map[string]*string)
 	tags["name"] = aws.String("kinesis-test")
 
-	s := NewStream("abc", &tags, tmpl)
-	s.writer.buffer.limits = &testLimits
-	s.writer.ticker = nil
-	s.writer.flusher = f
+	s := NewStream(streamName, &tags, tmpl, tmpl)
+
+	w := newWriter(
+		newBuffer(tmpl, streamName),
+		f,
+	)
+	w.ticker = nil
+	w.buffer.limits = &testLimits
+
+	s.writers[processName] = w
 	s.client = &fakeClient{
 		created: true,
 		err:     nil,
 	}
+
+	s.writers[processName].start()
 	s.ready = true
 	s.Start()
 
