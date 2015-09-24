@@ -18,10 +18,10 @@ var (
 	// ErrorHandler handles the reporting of an error.
 	ErrorHandler = logErr
 
-	// ErrMissingTagKey is returned when the tag key environment variable is missing.
+	// ErrMissingTagKey is returned when the tag key environment variable doesn't match.
 	ErrMissingTagKey = errors.New("the tag key is empty, check your template KINESIS_STREAM_TAG_KEY")
 
-	// ErrMissingTagValue is returned when the tag value environment variable is missing.
+	// ErrMissingTagValue is returned when the tag value environment variable doesn't match.
 	ErrMissingTagValue = errors.New("the tag value is empty, check your template KINESIS_STREAM_TAG_VALUE")
 )
 
