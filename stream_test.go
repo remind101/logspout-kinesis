@@ -41,8 +41,8 @@ func (f *fakeClient) Tag(input *kinesis.AddTagsToStreamInput) error {
 	return f.err
 }
 
-func (f *fakeClient) Kinesis() *kinesis.Kinesis {
-	return nil
+func (f *fakeClient) PutRecords(inp *kinesis.PutRecordsInput) (*kinesis.PutRecordsOutput, error) {
+	return nil, nil
 }
 
 // TODO: implement optional stream creation

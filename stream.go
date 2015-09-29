@@ -113,7 +113,7 @@ func (s *Stream) write(m *router.Message) error {
 
 	w := newWriter(
 		newBuffer(s.pKeyTmpl, s.name),
-		newFlusher(s.client.Kinesis()),
+		newFlusher(s.client),
 	)
 	w.start()
 	s.writers[process] = w
