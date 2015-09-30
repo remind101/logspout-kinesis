@@ -31,7 +31,6 @@ type Adapter struct {
 	StreamTmpl *template.Template
 	TagTmpl    *template.Template
 	PKeyTmpl   *template.Template
-	PTmpl      *template.Template
 }
 
 // NewAdapter creates a kinesis adapter. Called during init.
@@ -51,11 +50,6 @@ func NewAdapter(route *router.Route) (router.LogAdapter, error) {
 		return nil, err
 	}
 
-	pTmpl, err := compileTmpl("KINESIS_PROCESS_TEMPLATE")
-	if err != nil {
-		return nil, err
-	}
-
 	streams := make(map[string]*Stream)
 
 	return &Adapter{
@@ -63,7 +57,6 @@ func NewAdapter(route *router.Route) (router.LogAdapter, error) {
 		StreamTmpl: sTmpl,
 		TagTmpl:    tagTmpl,
 		PKeyTmpl:   pKeyTmpl,
-		PTmpl:      pTmpl,
 	}, nil
 }
 
@@ -90,7 +83,7 @@ func (a *Adapter) Stream(logstream chan *router.Message) {
 				break
 			}
 
-			s := NewStream(sn, tags, a.PKeyTmpl, a.PTmpl)
+			s := NewStream(sn, tags, a.PKeyTmpl)
 			s.Start()
 			a.Streams[sn] = s
 		}

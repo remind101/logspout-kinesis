@@ -1,7 +1,6 @@
 package kinesis
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"text/template"
@@ -11,9 +10,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/gliderlabs/logspout/router"
 )
-
-// ErrMissingProcess is returned when the process environment variable is doesn't match.
-var ErrMissingProcess = errors.New("the process is empty, check your template KINESIS_PROCESS_TEMPLATE")
 
 // StreamNotReadyError is returned while the stream is being created.
 type StreamNotReadyError struct {
@@ -30,7 +26,6 @@ type Stream struct {
 	name       string
 	tags       *map[string]*string
 	writers    map[string]*writer
-	pTmpl      *template.Template
 	pKeyTmpl   *template.Template
 	ready      bool
 	readyWrite chan bool
@@ -39,7 +34,7 @@ type Stream struct {
 }
 
 // NewStream instantiates a new stream.
-func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Template, pTmpl *template.Template) *Stream {
+func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Template) *Stream {
 	client := &client{
 		kinesis: kinesis.New(&aws.Config{}),
 	}
@@ -50,7 +45,6 @@ func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Templat
 		tags:       tags,
 		writers:    make(map[string]*writer),
 		pKeyTmpl:   pKeyTmpl,
-		pTmpl:      pTmpl,
 		readyWrite: make(chan bool),
 		errChan:    make(chan error),
 	}
@@ -101,12 +95,7 @@ func (s *Stream) Write(m *router.Message) error {
 }
 
 func (s *Stream) write(m *router.Message) error {
-	process, err := process(s.pTmpl, m)
-	if err != nil {
-		return err
-	}
-
-	if w, ok := s.writers[process]; ok {
+	if w, ok := s.writers[m.Container.ID]; ok {
 		w.write(m)
 		return nil
 	}
@@ -116,7 +105,7 @@ func (s *Stream) write(m *router.Message) error {
 		newFlusher(s.client),
 	)
 	w.start()
-	s.writers[process] = w
+	s.writers[m.Container.ID] = w
 	w.write(m)
 	return nil
 }
@@ -159,17 +148,4 @@ func (s *Stream) tag() error {
 	}
 
 	return nil
-}
-
-func process(tmpl *template.Template, m *router.Message) (string, error) {
-	process, err := executeTmpl(tmpl, m)
-	if err != nil {
-		return "", err
-	}
-
-	if process == "" {
-		return "", ErrMissingProcess
-	}
-
-	return process, nil
 }

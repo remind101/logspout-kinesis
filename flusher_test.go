@@ -7,6 +7,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/fsouza/go-dockerclient"
+	"github.com/gliderlabs/logspout/router"
 )
 
 func TestFlusher_FlushFull(t *testing.T) {
@@ -44,12 +46,18 @@ func TestFlusher_IntegrationInputsChannelFull(t *testing.T) {
 	}
 
 	streamName := "abc"
-	processName := "dummy"
-	tmpl, _ := template.New("").Parse(processName)
+	tmpl, _ := template.New("").Parse(streamName)
 	tags := make(map[string]*string)
 	tags["name"] = aws.String("kinesis-test")
 
-	s := NewStream(streamName, &tags, tmpl, tmpl)
+	m := &router.Message{
+		Data: "hello",
+		Container: &docker.Container{
+			ID: "123",
+		},
+	}
+
+	s := NewStream(streamName, &tags, tmpl)
 
 	w := newWriter(
 		newBuffer(tmpl, streamName),
@@ -58,13 +66,13 @@ func TestFlusher_IntegrationInputsChannelFull(t *testing.T) {
 	w.ticker = nil
 	w.buffer.limits = &testLimits
 
-	s.writers[processName] = w
+	s.writers[m.Container.ID] = w
 	s.client = &fakeClient{
 		created: true,
 		err:     nil,
 	}
 
-	s.writers[processName].start()
+	s.writers[m.Container.ID].start()
 	s.ready = true
 	s.Start()
 

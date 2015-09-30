@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/gliderlabs/logspout/router"
 	"github.com/stretchr/testify/assert"
 )
@@ -56,7 +57,7 @@ func (f *fakeClient) PutRecords(inp *kinesis.PutRecordsInput) (*kinesis.PutRecor
 // }
 
 func TestStream_CreateAlreadyExists(t *testing.T) {
-	s := NewStream("abc", nil, nil, nil)
+	s := NewStream("abc", nil, nil)
 	s.client = &fakeClient{
 		created: true,
 	}
@@ -66,7 +67,7 @@ func TestStream_CreateAlreadyExists(t *testing.T) {
 }
 
 func TestStream_CreateStatusActive(t *testing.T) {
-	s := NewStream("abc", nil, nil, nil)
+	s := NewStream("abc", nil, nil)
 	s.client = &fakeClient{
 		created: false,
 		status:  "ACTIVE",
@@ -77,7 +78,7 @@ func TestStream_CreateStatusActive(t *testing.T) {
 }
 
 func TestStream_CreateError(t *testing.T) {
-	s := NewStream("abc", nil, nil, nil)
+	s := NewStream("abc", nil, nil)
 	s.client = &fakeClient{
 		created: false,
 		err:     awserr.New("RequestError", "500", nil),
@@ -90,9 +91,12 @@ func TestStream_CreateError(t *testing.T) {
 func TestStream_WriteStreamNotReady(t *testing.T) {
 	m := &router.Message{
 		Data: "hello",
+		Container: &docker.Container{
+			ID: "123",
+		},
 	}
 
-	s := NewStream("abc", nil, nil, nil)
+	s := NewStream("abc", nil, nil)
 	s.client = &fakeClient{
 		created: false,
 	}
@@ -109,7 +113,14 @@ func TestStream_WriteStreamBecomesReady(t *testing.T) {
 	tags := make(map[string]*string)
 	tags["name"] = aws.String("kinesis-test")
 
-	s := NewStream("abc", &tags, tmpl, tmpl)
+	m := &router.Message{
+		Data: "hello",
+		Container: &docker.Container{
+			ID: "123",
+		},
+	}
+
+	s := NewStream("abc", &tags, tmpl)
 	fk := &fakeClient{
 		created: false,
 		status:  "CREATING",
