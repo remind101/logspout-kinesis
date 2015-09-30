@@ -9,6 +9,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/gliderlabs/logspout/router"
 	"github.com/stretchr/testify/assert"
 )
@@ -39,6 +40,10 @@ func (f *fakeClient) Tag(input *kinesis.AddTagsToStreamInput) error {
 	defer f.mutex.Unlock()
 
 	return f.err
+}
+
+func (f *fakeClient) PutRecords(inp *kinesis.PutRecordsInput) (*kinesis.PutRecordsOutput, error) {
+	return nil, nil
 }
 
 // TODO: implement optional stream creation
@@ -86,6 +91,9 @@ func TestStream_CreateError(t *testing.T) {
 func TestStream_WriteStreamNotReady(t *testing.T) {
 	m := &router.Message{
 		Data: "hello",
+		Container: &docker.Container{
+			ID: "123",
+		},
 	}
 
 	s := NewStream("abc", nil, nil)
@@ -104,6 +112,13 @@ func TestStream_WriteStreamBecomesReady(t *testing.T) {
 	tmpl, _ := template.New("").Parse("abc")
 	tags := make(map[string]*string)
 	tags["name"] = aws.String("kinesis-test")
+
+	m := &router.Message{
+		Data: "hello",
+		Container: &docker.Container{
+			ID: "123",
+		},
+	}
 
 	s := NewStream("abc", &tags, tmpl)
 	fk := &fakeClient{

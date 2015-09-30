@@ -25,7 +25,8 @@ type Stream struct {
 	client     Client
 	name       string
 	tags       *map[string]*string
-	writer     *writer
+	writers    map[string]*writer
+	pKeyTmpl   *template.Template
 	ready      bool
 	readyWrite chan bool
 	err        error
@@ -38,16 +39,12 @@ func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Templat
 		kinesis: kinesis.New(&aws.Config{}),
 	}
 
-	writer := newWriter(
-		newBuffer(pKeyTmpl, name),
-		newFlusher(client.kinesis),
-	)
-
 	s := &Stream{
 		client:     client,
 		name:       name,
 		tags:       tags,
-		writer:     writer,
+		writers:    make(map[string]*writer),
+		pKeyTmpl:   pKeyTmpl,
 		readyWrite: make(chan bool),
 		errChan:    make(chan error),
 	}
@@ -59,7 +56,6 @@ func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Templat
 // AWS.
 func (s *Stream) Start() {
 	go s.start()
-	s.writer.start()
 }
 
 func (s *Stream) start() {
@@ -92,11 +88,26 @@ func (s *Stream) Write(m *router.Message) error {
 	case s.err != nil:
 		return s.err
 	case s.ready:
-		s.writer.write(m)
-		return nil
+		return s.write(m)
 	default:
 		return &StreamNotReadyError{Stream: s.name}
 	}
+}
+
+func (s *Stream) write(m *router.Message) error {
+	if w, ok := s.writers[m.Container.ID]; ok {
+		w.write(m)
+		return nil
+	}
+
+	w := newWriter(
+		newBuffer(s.pKeyTmpl, s.name),
+		newFlusher(s.client),
+	)
+	w.start()
+	s.writers[m.Container.ID] = w
+	w.write(m)
+	return nil
 }
 
 func (s *Stream) create() error {

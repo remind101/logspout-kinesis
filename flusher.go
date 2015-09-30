@@ -24,12 +24,12 @@ type Flusher interface {
 }
 
 type flusher struct {
-	client        *kinesis.Kinesis
+	client        Client
 	inputs        chan kinesis.PutRecordsInput
 	dropInputFunc func(kinesis.PutRecordsInput)
 }
 
-func newFlusher(client *kinesis.Kinesis) Flusher {
+func newFlusher(client Client) Flusher {
 	return &flusher{
 		client:        client,
 		inputs:        make(chan kinesis.PutRecordsInput, 10),

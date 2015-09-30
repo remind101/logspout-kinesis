@@ -6,12 +6,9 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/service/kinesis"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/gliderlabs/logspout/router"
 )
-
-var m = &router.Message{
-	Data: "hello",
-}
 
 type fakeFlusher struct {
 	inputs        chan kinesis.PutRecordsInput
@@ -27,6 +24,7 @@ func (f *fakeFlusher) start() {
 func (f *fakeFlusher) flush(input kinesis.PutRecordsInput) {
 	select {
 	case f.inputs <- input:
+		f.flushInputs()
 	default:
 		f.dropInputFunc(input)
 	}
@@ -59,7 +57,14 @@ func TestWriter_Flush(t *testing.T) {
 	w := newWriter(b, f)
 	w.ticker = nil
 
-	w.start()
+	go w.bufferMessages()
+
+	m := &router.Message{
+		Data: "hello",
+		Container: &docker.Container{
+			ID: "123",
+		},
+	}
 
 	w.write(m)
 	w.write(m)
@@ -84,10 +89,17 @@ func TestWriter_PeriodicFlush(t *testing.T) {
 
 	w := newWriter(b, f)
 
-	ticker := make(chan time.Time)
+	ticker := make(chan time.Time, 1)
 	w.ticker = ticker
 
-	w.start()
+	go w.bufferMessages()
+
+	m := &router.Message{
+		Data: "hello",
+		Container: &docker.Container{
+			ID: "123",
+		},
+	}
 	w.write(m)
 
 	select {
