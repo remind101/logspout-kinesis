@@ -13,7 +13,7 @@ $ 	docker run --rm \
 ```
 
 You will need the Amazon credentials in the form of environment variables, or whatever suits you.
-You will also neeed to set the environment variables `KINESIS_STREAM_TEMPLATE` and `KINESIS_PARTITION_KEY_TEMPLATE`, see below.
+You will also need to set the environment variables `KINESIS_STREAM_TEMPLATE` and `KINESIS_PARTITION_KEY_TEMPLATE`, see below.
 
 ### streams and partition key configuration
 You can decide to route your logs to one or multiple Kinesis Streams (and their names) via the the `KINESIS_STREAM_TEMPLATE` environment variable.  Golang's [text/template](http://golang.org/pkg/text/template/) package is used for templating, where the model available for templating is the [Message struct](https://github.com/gliderlabs/logspout/blob/master/router/types.go).
