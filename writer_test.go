@@ -24,6 +24,7 @@ func (f *fakeFlusher) start() {
 func (f *fakeFlusher) flush(input kinesis.PutRecordsInput) {
 	select {
 	case f.inputs <- input:
+		f.flushInputs()
 	default:
 		f.dropInputFunc(input)
 	}
@@ -56,7 +57,7 @@ func TestWriter_Flush(t *testing.T) {
 	w := newWriter(b, f)
 	w.ticker = nil
 
-	w.start()
+	go w.bufferMessages()
 
 	m := &router.Message{
 		Data: "hello",
@@ -88,10 +89,10 @@ func TestWriter_PeriodicFlush(t *testing.T) {
 
 	w := newWriter(b, f)
 
-	ticker := make(chan time.Time)
+	ticker := make(chan time.Time, 1)
 	w.ticker = ticker
 
-	w.start()
+	go w.bufferMessages()
 
 	m := &router.Message{
 		Data: "hello",
