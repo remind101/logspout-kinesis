@@ -1,3 +1,7 @@
+machine:
+  environment:
+    GO15VENDOREXPERIMENT: 1
+
 checkout:
   post:
     - rm -rf ~/.go_workspace/src/github.com/remind101
@@ -7,10 +11,10 @@ checkout:
 dependencies:
   override:
     - go install -a -race std
-    - go get github.com/tools/godep
     - go version
+    - echo $GO15VENDOREXPERIMENT
 
 test:
   override:
-    - cd ~/.go_workspace/src/github.com/remind101/logspout-kinesis && godep go test -race -short ./...
-    - cd ~/.go_workspace/src/github.com/remind101/logspout-kinesis && godep go vet ./...
+    - cd ~/.go_workspace/src/github.com/remind101/logspout-kinesis && go test -race -short ./...
+    - cd ~/.go_workspace/src/github.com/remind101/logspout-kinesis && go vet ./...
