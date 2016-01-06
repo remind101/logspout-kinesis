@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/kinesis"
 	"github.com/gliderlabs/logspout/router"
 )
@@ -35,8 +36,9 @@ type Stream struct {
 
 // NewStream instantiates a new stream.
 func NewStream(name string, tags *map[string]*string, pKeyTmpl *template.Template) *Stream {
+	session := session.New(&aws.Config{})
 	client := &client{
-		kinesis: kinesis.New(&aws.Config{}),
+		kinesis: kinesis.New(session),
 	}
 
 	s := &Stream{
