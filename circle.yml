@@ -16,5 +16,5 @@ dependencies:
 
 test:
   override:
-    - cd ~/.go_workspace/src/github.com/remind101/logspout-kinesis && go test -race -short ./...
-    - cd ~/.go_workspace/src/github.com/remind101/logspout-kinesis && go vet ./...
+    - cd ~/.go_workspace/src/github.com/remind101/logspout-kinesis && go test -race -short $(go list ./... | grep -v /vendor/)
+    - cd ~/.go_workspace/src/github.com/remind101/logspout-kinesis && go vet $(go list ./... | grep -v /vendor/)
