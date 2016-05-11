@@ -57,7 +57,7 @@ KINESIS_STREAM_TAG_VALUE={{ lookUp .Container.Config.Env "EMPIRE_APPNAME" }}
 To activate logging, set the `KINESIS_DEBUG` environment variable to `true`.
 
 ## build
-**logspout-kinesis** is a custom logspout module. To use it, create an empty Dockerfile based on `gliderlabs/logspout:master`, and import this `logspout-kinesis` package into a new `modules.go` file. The `gliderlabs/logspout` base image will `ONBUILD COPY` and replace the original `modules.go`.
+**logspout-kinesis** is a custom logspout module. To use it, create an empty Dockerfile based on `gliderlabs/logspout`, and import this `logspout-kinesis` package into a new `modules.go` file. The `gliderlabs/logspout` base image will `ONBUILD COPY` and replace the original `modules.go`.
 
 The following example creates a minimal logspout image capable of writing Dockers logs to Kinesis:
 
@@ -74,7 +74,7 @@ import (
 
 In Dockerfile:
 ```Dockerfile
-FROM gliderlabs/logspout:master
+FROM gliderlabs/logspout:v3
 ```
 
 Final step, build the image:
@@ -82,4 +82,4 @@ Final step, build the image:
 $ docker build -t mycompany/logspout .
 ```
 
-More information on custom modules is available at the Logspout repo: [Custom Logspout Modules](https://github.com/gliderlabs/logspout/blob/master/custom/README.md)
+More information on custom modules is available at the Logspout repo: [Custom Logspout Modules](https://github.com/gliderlabs/logspout/tree/master/custom)
